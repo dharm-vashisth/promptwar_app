@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ElderEase — Your Daily Companion</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Serif (Playfair/Merriweather) for Newspaper headers, Inter for crisp legibility -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            paper: '#FDFBF7',
+            'paper-card': '#FAF7F0',
+            'paper-border': '#E4DCD0',
+            charcoal: '#1A1A1A',
+            'charcoal-muted': '#4A4A4A',
+            crimson: '#8C2D19',
+            'crimson-light': '#FDF2F0',
+            forest: '#1E4D2B',
+            'forest-light': '#F0F7F2',
+            amber: '#7C4A03',
+            'amber-light': '#FDF8EC',
+            radio: '#3D3830'
+          },
+          fontFamily: {
+            serif: ['Newsreader', 'Georgia', 'serif'],
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'sans-serif'],
+          },
+          boxShadow: {
+            'tactile': '0 4px 0 0 #D4CAC0, 0 6px 12px -2px rgba(26,26,26,0.08)',
+            'tactile-pressed': '0 1px 0 0 #D4CAC0, inset 0 2px 4px rgba(0,0,0,0.1)',
+            'tactile-crimson': '0 4px 0 0 #5E1D0F, 0 6px 12px -2px rgba(140,45,25,0.25)',
+            'tactile-forest': '0 4px 0 0 #12331C, 0 6px 12px -2px rgba(30,77,43,0.25)',
+            'tactile-dark': '0 4px 0 0 #1A1815, 0 6px 12px -2px rgba(26,26,26,0.2)'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Senior ergonomics: minimum touch targets 56px, high-contrast focus rings, no pinch zoom jank */
+    body {
+      background-color: #F4EFE6;
+      color: #1A1A1A;
+      font-family: '"Plus Jakarta Sans"', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+    
+    /* Subtle newspaper print texture */
+    .newsprint-grain {
+      background-image: radial-gradient(#1A1A1A 0.4px, transparent 0.4px);
+      background-size: 16px 16px;
+      opacity: 0.03;
+    }
+
+    /* Tactile button active states */
+    .btn-tactile:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 0 currentColor !important;
+    }
+
+    /* Pulse wave indicator for Voice / Radio listening */
+    @keyframes audioWave {
+      0%, 100% { height: 8px; }
+      50% { height: 28px; }
+    }
+    .wave-bar:nth-child(1) { animation: audioWave 1s ease-in-out infinite 0.1s; }
+    .wave-bar:nth-child(2) { animation: audioWave 1s ease-in-out infinite 0.25s; }
+    .wave-bar:nth-child(3) { animation: audioWave 1s ease-in-out infinite 0.4s; }
+    .wave-bar:nth-child(4) { animation: audioWave 1s ease-in-out infinite 0.15s; }
+    .wave-bar:nth-child(5) { animation: audioWave 1s ease-in-out infinite 0.3s; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-start p-0 sm:p-4 text-[#1A1A1A]">
+
+  <!-- Mobile Device Container -->
+  <main id="app-container" class="w-full max-w-md min-h-screen bg-[#FDFBF7] border-x border-[#E4DCD0] relative flex flex-col shadow-2xl overflow-hidden pb-12">
+    
+    <!-- Background Texture -->
+    <div class="absolute inset-0 newsprint-grain pointer-events-none"></div>
+
+    <!-- ==================== PERSISTENT HEADER (THE MORNING CHRONICLE) ==================== -->
+    <header class="relative px-5 pt-5 pb-3 border-b-2 border-[#1A1A1A] bg-[#FAF7F0]">
+      <!-- Date & Weather Masthead Line -->
+      <div class="flex items-center justify-between text-xs sm:text-sm font-bold tracking-wider uppercase border-b border-[#E4DCD0] pb-1 mb-2 text-[#4A4A4A]">
+        <span id="masthead-date">Friday, October 24</span>
+        <span class="flex items-center gap-1.5 text-forest font-bold">
+          <i data-lucide="sun" class="w-4 h-4 text-amber"></i> 72° Calm & Sunny
+        </span>
+      </div>
+
+      <!-- App Name & Regional Salutation -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="font-serif text-3xl font-bold tracking-tight text-[#1A1A1A] flex items-center gap-2">
+            ElderEase
+          </h1>
+          <p id="salutation-text" class="text-base text-charcoal font-semibold mt-0.5">
+            Good morning, Arthur. Take your time.
+          </p>
+        </div>
+
+        <!-- Language / Locale Toggle (India, US, Japan) -->
+        <div class="flex flex-col items-end">
+          <label class="text-[11px] font-bold text-charcoal-muted uppercase mb-0.5">Language / भाषा</label>
+          <select id="locale-selector" onchange="changeLocale(this.value)" class="bg-[#FDFBF7] border-2 border-[#1A1A1A] rounded-lg px-2.5 py-1.5 text-sm font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-forest cursor-pointer">
+            <option value="en-US" selected>🇺🇸 English (US)</option>
+            <option value="hi-IN">🇮🇳 हिन्दी (Hindi)</option>
+            <option value="ja-JP">🇯🇵 日本語 (Japanese)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Bedside Radio Global Bar: One-Tap Audio Reader -->
+      <div class="mt-3.5 bg-[#FAF7F0] border-2 border-[#3D3830] rounded-xl p-2.5 flex items-center justify-between shadow-sm">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-full bg-[#1A1A1A] text-paper flex items-center justify-center flex-shrink-0">
+            <i data-lucide="radio" class="w-5 h-5 text-amber-200"></i>
+          </div>
+          <div>
+            <div class="text-xs font-bold text-charcoal uppercase tracking-wider flex items-center gap-1">
+              <span>Bedside Audio Companion</span>
+              <span id="audio-status-badge" class="inline-block w-2 h-2 rounded-full bg-forest"></span>
+            </div>
+            <div id="audio-caption" class="text-sm font-medium text-charcoal-muted line-clamp-1">
+              Tap Listen on any card to read aloud
+            </div>
+          </div>
+        </div>
+
+        <!-- Global Master Audio Action Button -->
+        <button id="master-tts-btn" onclick="toggleGlobalSpeech()" class="btn-tactile bg-[#1A1A1A] hover:bg-[#333] text-paper font-bold px-3.5 py-2 rounded-lg text-sm flex items-center gap-1.5 shadow-tactile-dark flex-shrink-0">
+          <i data-lucide="volume-2" class="w-4 h-4 text-paper"></i>
+          <span id="master-tts-label">Listen</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Visual Audio Playing Bar (Appears when reading aloud) -->
+    <div id="audio-visualizer" class="hidden px-5 py-2 bg-amber-light border-b border-amber/30 flex items-center justify-between text-amber transition-all">
+      <div class="flex items-center gap-2">
+        <div class="flex items-end gap-1 h-5">
+          <div class="wave-bar w-1 bg-amber rounded-full"></div>
+          <div class="wave-bar w-1 bg-amber rounded-full"></div>
+          <div class="wave-bar w-1 bg-amber rounded-full"></div>
+          <div class="wave-bar w-1 bg-amber rounded-full"></div>
+          <div class="wave-bar w-1 bg-amber rounded-full"></div>
+        </div>
+        <span class="text-xs font-bold uppercase tracking-wider">Reading clearly at normal pace...</span>
+      </div>
+      <button onclick="stopSpeech()" class="text-xs font-bold underline text-crimson p-1">Stop</button>
+    </div>
+
+    <!-- ==================== SINGLE ACTIVE CARD CONTAINER ==================== -->
+    <!-- RULE: EXACTLY ONE ACTIVE TASK/CARD RENDERED ON SCREEN AT A TIME -->
+    <div class="flex-1 px-4 py-5 flex flex-col justify-start">
+      
+      <!-- NAVIGATION BREADCRUMB / STEP INDICATOR (Calm, 3 Main Modes) -->
+      <nav class="flex items-center justify-between bg-[#F4EFE6] p-1.5 rounded-xl border border-[#E4DCD0] mb-5">
+        <button onclick="switchMode('morning')" id="tab-morning" class="flex-1 py-2.5 rounded-lg font-bold text-sm sm:text-base text-center transition-all bg-[#1A1A1A] text-paper shadow-tactile-dark">
+          📰 Morning
+        </button>
+        <button onclick="switchMode('scanner')" id="tab-scanner" class="flex-1 py-2.5 rounded-lg font-bold text-sm sm:text-base text-center transition-all text-[#4A4A4A] hover:text-[#1A1A1A]">
+          🔍 Safety Scan
+        </button>
+        <button onclick="switchMode('family')" id="tab-family" class="flex-1 py-2.5 rounded-lg font-bold text-sm sm:text-base text-center transition-all text-[#4A4A4A] hover:text-[#1A1A1A]">
+          📞 Help & Family
+        </button>
+      </nav>
+
+      <!-- ==================== SCREEN 1: THE MORNING DIGEST (ZERO-FOMO) ==================== -->
+      <section id="card-morning" class="flex-1 flex flex-col">
+        <div class="bg-[#FAF7F0] border-2 border-[#1A1A1A] rounded-2xl p-5 shadow-tactile flex-1 flex flex-col justify-between">
+          <div>
+            <!-- Section Stamp -->
+            <div class="flex items-center justify-between border-b border-[#E4DCD0] pb-3 mb-4">
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-[#F4EFE6] border border-[#D4CAC0] rounded-full text-xs font-bold text-charcoal uppercase">
+                <i data-lucide="coffee" class="w-3.5 h-3.5 text-amber"></i> Daily Morning Digest
+              </span>
+              <span class="text-xs font-bold text-charcoal-muted">No Urgent Risks</span>
+            </div>
+
+            <!-- Main Big Headline -->
+            <h2 id="digest-headline" class="font-serif text-2xl sm:text-3xl font-bold text-[#1A1A1A] leading-snug mb-3">
+              Everything is quiet and safe today.
+            </h2>
+
+            <!-- 15-Word Plain Language Paragraph (High-Legibility, Min 18px font) -->
+            <p id="digest-summary" class="text-lg text-charcoal leading-relaxed font-medium mb-5 bg-[#FDFBF7] p-3.5 rounded-xl border border-[#E4DCD0]">
+              Your bank balance is verified. Your pharmacy delivery arrives at 2:00 PM. No bills are due today.
+            </p>
+
+            <!-- Three Key Calming Facts (Large Icons, no tech jargon) -->
+            <div class="space-y-3 mb-6">
+              <div class="flex items-center gap-3.5 p-3 rounded-xl bg-[#F0F7F2] border border-[#C2E0C9]">
+                <div class="w-8 h-8 rounded-full bg-forest text-white flex items-center justify-center flex-shrink-0">
+                  <i data-lucide="shield-check" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <div class="text-xs font-bold text-forest uppercase">Bank & Accounts</div>
+                  <div id="bank-status-text" class="text-base font-bold text-charcoal">All accounts safe. Zero strange charges.</div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3.5 p-3 rounded-xl bg-[#FAF7F0] border border-[#E4DCD0]">
+                <div class="w-8 h-8 rounded-full bg-amber text-white flex items-center justify-center flex-shrink-0">
+                  <i data-lucide="pill" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <div class="text-xs font-bold text-amber uppercase">Medicine Reminder</div>
+                  <div id="med-status-text" class="text-base font-bold text-charcoal">Blood pressure pill taken with breakfast.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Action Buttons: Large, Tactile, High Contrast -->
+          <div class="space-y-3 pt-3 border-t border-[#E4DCD0]">
+            <button onclick="readCardAloud('digest')" class="btn-tactile w-full py-4 px-4 bg-[#1A1A1A] text-paper font-bold text-lg rounded-xl flex items-center justify-center gap-3 shadow-tactile-dark">
+              <i data-lucide="volume-2" class="w-6 h-6 text-paper"></i>
+              <span id="btn-read-digest-label">Read Morning Digest Aloud</span>
+            </button>
+            <button onclick="switchMode('scanner')" class="btn-tactile w-full py-3 px-4 bg-[#FAF7F0] hover:bg-[#F4EFE6] text-charcoal border-2 border-[#1A1A1A] font-bold text-base rounded-xl flex items-center justify-center gap-2 shadow-tactile">
+              <i data-lucide="search" class="w-5 h-5 text-charcoal"></i>
+              <span id="btn-check-message-label">Check a Message or Bill</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SCREEN 2: SCAM & BILL SAFETY SCANNER ==================== -->
+      <section id="card-scanner" class="hidden flex-1 flex flex-col">
+        <div class="bg-[#FAF7F0] border-2 border-[#1A1A1A] rounded-2xl p-5 shadow-tactile flex-1 flex flex-col justify-between">
+          <div>
+            <!-- Header Status -->
+            <div class="flex items-center justify-between border-b border-[#E4DCD0] pb-3 mb-4">
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-light border border-amber/30 rounded-full text-xs font-bold text-amber uppercase">
+                <i data-lucide="shield" class="w-3.5 h-3.5"></i> Multimodal Safety Check
+              </span>
+              <span class="text-xs font-bold text-forest flex items-center gap-1">
+                <i data-lucide="lock" class="w-3.5 h-3.5"></i> PII Masked
+              </span>
+            </div>
+
+            <h2 id="scanner-title" class="font-serif text-2xl font-bold text-[#1A1A1A] leading-tight mb-2">
+              Did someone send you a message or bill?
+            </h2>
+            <p id="scanner-instruction" class="text-base text-charcoal-muted mb-4 font-medium">
+              Paste the text below, or choose a quick sample to check for scams and sneaky charges.
+            </p>
+
+            <!-- Quick Preset Samples for Testing the Multimodal AI Guardrail -->
+            <div class="mb-4">
+              <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">
+                Try a realistic example:
+              </label>
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="loadSample('scam')" class="p-2 text-left bg-crimson-light border-2 border-crimson rounded-lg hover:bg-red-100 transition-colors">
+                  <div class="text-xs font-black text-crimson uppercase">⚠️ Fake Electric Bill</div>
+                  <div class="text-xs text-charcoal line-clamp-1 mt-0.5">Urgent power disconnect SMS with link</div>
+                </button>
+                <button onclick="loadSample('safe_bill')" class="p-2 text-left bg-forest-light border-2 border-forest rounded-lg hover:bg-green-100 transition-colors">
+                  <div class="text-xs font-black text-forest uppercase">✅ Normal Water Bill</div>
+                  <div class="text-xs text-charcoal line-clamp-1 mt-0.5">Monthly municipal statement $34.50</div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Input Form (Large 20px font, High-Contrast Border) -->
+            <div class="mb-4">
+              <label for="message-input" class="block text-sm font-bold text-charcoal mb-1.5">
+                Message Text or Bill Details:
+              </label>
+              <textarea id="message-input" rows="3" class="w-full text-lg p-3 bg-[#FDFBF7] border-2 border-[#1A1A1A] rounded-xl text-charcoal font-medium focus:ring-4 focus:ring-forest focus:outline-none placeholder-stone-400" placeholder="Paste SMS or email text here..."></textarea>
+            </div>
+          </div>
+
+          <!-- Bottom Action Buttons -->
+          <div class="space-y-3 pt-3 border-t border-[#E4DCD0]">
+            <button id="btn-run-analysis" onclick="runMultimodalAnalysis()" class="btn-tactile w-full py-4 px-4 bg-forest text-paper font-bold text-lg rounded-xl flex items-center justify-center gap-3 shadow-tactile-forest">
+              <i data-lucide="shield-alert" class="w-6 h-6 text-paper"></i>
+              <span id="btn-scan-label">Analyze For Safety Now</span>
+            </button>
+            <button onclick="clearScanner()" class="w-full py-2.5 text-sm font-bold text-charcoal-muted hover:text-charcoal underline text-center">
+              Clear & Start Fresh
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SCREEN 3: 3-PART SAFETY RESULT CARD ==================== -->
+      <section id="card-result" class="hidden flex-1 flex flex-col">
+        <div id="result-wrapper" class="bg-[#FAF7F0] border-2 border-[#1A1A1A] rounded-2xl p-5 shadow-tactile flex-1 flex flex-col justify-between transition-colors">
+          <div>
+            <!-- Security Guardrail Badge -->
+            <div class="flex items-center justify-between border-b border-[#E4DCD0] pb-2.5 mb-3">
+              <span class="text-xs font-bold text-charcoal-muted uppercase flex items-center gap-1.5">
+                <i data-lucide="check-check" class="w-4 h-4 text-forest"></i> PII Masked & Sanitized
+              </span>
+              <span id="result-timestamp" class="text-xs font-bold text-charcoal-muted">Just now</span>
+            </div>
+
+            <!-- PART 1: BOLD INSTANT SAFETY CHECK -->
+            <div id="result-status-badge" class="p-3.5 rounded-xl border-2 mb-4 flex items-center gap-3 bg-crimson-light border-crimson">
+              <div id="result-icon-box" class="w-10 h-10 rounded-full bg-crimson text-white flex items-center justify-center flex-shrink-0">
+                <i id="result-icon" data-lucide="alert-triangle" class="w-6 h-6"></i>
+              </div>
+              <div>
+                <div class="text-xs font-black uppercase tracking-wider text-crimson" id="result-status-sub">Safety Scan</div>
+                <h3 id="result-status-title" class="font-serif text-xl sm:text-2xl font-bold text-crimson leading-tight">
+                  ⚠️ DANGER: Do Not Trust This
+                </h3>
+              </div>
+            </div>
+
+            <!-- PART 2: 15-WORD PLAIN LANGUAGE SUMMARY (No technical jargon) -->
+            <div class="mb-4">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-charcoal-muted mb-1.5">
+                Simple Explanation:
+              </h4>
+              <p id="result-plain-summary" class="text-lg font-semibold text-charcoal bg-[#FDFBF7] p-3.5 rounded-xl border-2 border-[#E4DCD0] leading-relaxed">
+                This message claims your power will be cut off. It is a known fake message designed to steal your bank password.
+              </p>
+            </div>
+
+            <!-- PART 3: EXACTLY ONE RECOMMENDED ACTION -->
+            <div class="mb-4">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-charcoal-muted mb-1.5">
+                What You Should Do Now:
+              </h4>
+              <div class="p-3.5 rounded-xl bg-[#FAF7F0] border-2 border-[#1A1A1A] flex items-start gap-3">
+                <i data-lucide="arrow-right-circle" class="w-6 h-6 text-crimson flex-shrink-0 mt-0.5"></i>
+                <p id="result-recommended-action" class="text-base font-bold text-charcoal">
+                  Do not click the web link. Delete the message. Your real power bill is already paid.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Affordance Buttons: Listen Aloud, Call Family Contact, Dismiss -->
+          <div class="space-y-2.5 pt-3 border-t border-[#E4DCD0]">
+            <button onclick="readCardAloud('result')" class="btn-tactile w-full py-4 px-4 bg-[#1A1A1A] text-paper font-bold text-lg rounded-xl flex items-center justify-center gap-3 shadow-tactile-dark">
+              <i data-lucide="volume-2" class="w-6 h-6 text-paper"></i>
+              <span id="btn-read-result-label">Listen to This Safety Advice</span>
+            </button>
+
+            <div class="grid grid-cols-2 gap-2.5">
+              <button onclick="callFamilyContact()" class="btn-tactile py-3 px-3 bg-crimson text-paper font-bold text-base rounded-xl flex items-center justify-center gap-2 shadow-tactile-crimson">
+                <i data-lucide="phone-call" class="w-5 h-5 text-paper"></i>
+                <span id="btn-call-family-label">Call Family</span>
+              </button>
+              <button onclick="switchMode('morning')" class="btn-tactile py-3 px-3 bg-[#FAF7F0] border-2 border-[#1A1A1A] text-charcoal font-bold text-base rounded-xl flex items-center justify-center gap-2 shadow-tactile">
+                <i data-lucide="check" class="w-5 h-5 text-charcoal"></i>
+                <span id="btn-dismiss-label">All Clear / Done</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SCREEN 4: TRUSTED FAMILY & EMERGENCY CONTACTS ==================== -->
+      <section id="card-family" class="hidden flex-1 flex flex-col">
+        <div class="bg-[#FAF7F0] border-2 border-[#1A1A1A] rounded-2xl p-5 shadow-tactile flex-1 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between border-b border-[#E4DCD0] pb-3 mb-4">
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-forest-light border border-forest/30 rounded-full text-xs font-bold text-forest uppercase">
+                <i data-lucide="users" class="w-3.5 h-3.5"></i> One-Touch Verified Contacts
+              </span>
+              <span class="text-xs font-bold text-charcoal-muted">Always Available</span>
+            </div>
+
+            <h2 id="family-title" class="font-serif text-2xl font-bold text-[#1A1A1A] mb-2">
+              Speak with someone you trust
+            </h2>
+            <p id="family-sub" class="text-base text-charcoal-muted mb-4 font-medium">
+              If anything feels confusing or scary, tap a button below to call immediately.
+            </p>
+
+            <div class="space-y-3">
+              <!-- Contact 1: Primary Family Member -->
+              <div class="p-3.5 bg-[#FDFBF7] border-2 border-[#1A1A1A] rounded-xl flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 rounded-full bg-forest text-paper flex items-center justify-center font-bold text-lg">
+                    S
+                  </div>
+                  <div>
+                    <div id="contact-1-name" class="text-lg font-bold text-charcoal">Sarah (Daughter)</div>
+                    <div class="text-xs font-bold text-forest">Primary Verified Helper</div>
+                  </div>
+                </div>
+                <button onclick="triggerCall('Sarah', '+1 (555) 234-5678')" class="btn-tactile px-4 py-2.5 bg-forest text-paper font-bold text-sm rounded-lg flex items-center gap-1.5 shadow-tactile-forest">
+                  <i data-lucide="phone" class="w-4 h-4"></i> Call
+                </button>
+              </div>
+
+              <!-- Contact 2: Bank Fraud Helpline -->
+              <div class="p-3.5 bg-[#FDFBF7] border-2 border-[#1A1A1A] rounded-xl flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 rounded-full bg-amber text-paper flex items-center justify-center font-bold text-lg">
+                    B
+                  </div>
+                  <div>
+                    <div id="contact-2-name" class="text-lg font-bold text-charcoal">My Bank Helpline</div>
+                    <div class="text-xs font-bold text-amber">Direct Official Number</div>
+                  </div>
+                </div>
+                <button onclick="triggerCall('Bank Helpline', '1-800-432-1000')" class="btn-tactile px-4 py-2.5 bg-amber text-paper font-bold text-sm rounded-lg flex items-center gap-1.5 shadow-tactile">
+                  <i data-lucide="phone" class="w-4 h-4"></i> Call
+                </button>
+              </div>
+
+              <!-- Contact 3: Doctor / Clinic -->
+              <div class="p-3.5 bg-[#FDFBF7] border-2 border-[#1A1A1A] rounded-xl flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 rounded-full bg-radio text-paper flex items-center justify-center font-bold text-lg">
+                    Dr
+                  </div>
+                  <div>
+                    <div id="contact-3-name" class="text-lg font-bold text-charcoal">Dr. Miller’s Clinic</div>
+                    <div class="text-xs font-bold text-charcoal-muted">Family Physician</div>
+                  </div>
+                </div>
+                <button onclick="triggerCall('Dr. Miller', '+1 (555) 890-1234')" class="btn-tactile px-4 py-2.5 bg-radio text-paper font-bold text-sm rounded-lg flex items-center gap-1.5 shadow-tactile">
+                  <i data-lucide="phone" class="w-4 h-4"></i> Call
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Back to Digest -->
+          <div class="pt-3 border-t border-[#E4DCD0]">
+            <button onclick="switchMode('morning')" class="btn-tactile w-full py-3 px-4 bg-[#FAF7F0] border-2 border-[#1A1A1A] text-charcoal font-bold text-base rounded-xl flex items-center justify-center gap-2 shadow-tactile">
+              <i data-lucide="arrow-left" class="w-5 h-5"></i> Back to Morning Digest
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ==================== PERSISTENT FOOTER: BED-SIDE RADIO TACTILE FEEL ==================== -->
+    <footer class="px-5 py-3 bg-[#FAF7F0] border-t-2 border-[#1A1A1A] flex items-center justify-between text-xs text-charcoal font-semibold">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-forest animate-pulse"></span>
+        <span>Secure Guardrail Active</span>
+      </div>
+      <div class="text-right">
+        <span class="font-serif italic">ElderEase v2.4 • Calm Tech</span>
+      </div>
+    </footer>
+
+  </main>
+
+  <!-- ==================== FRONTEND JAVASCRIPT & SPEECH ENGINE ==================== -->
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // App State
+    let currentLocale = 'en-US';
+    let currentMode = 'morning';
+    let isSpeaking = false;
+    let currentUtterance = null;
+
+    // Multi-Language Localization Dictionary (English, Hindi, Japanese)
+    const i18n = {
+      'en-US': {
+        date: 'Friday, October 24',
+        salutation: 'Good morning, Arthur. Take your time.',
+        audioCaption: 'Tap Listen on any card to read aloud',
+        audioStatus: 'Audio Ready',
+        masterListen: 'Listen',
+        masterStop: 'Stop Audio',
+        tabMorning: '📰 Morning',
+        tabScanner: '🔍 Safety Scan',
+        tabFamily: '📞 Help & Family',
+        digestHeadline: 'Everything is quiet and safe today.',
+        digestSummary: 'Your bank balance is verified. Your pharmacy delivery arrives at 2:00 PM. No bills are due today.',
+        bankStatus: 'All accounts safe. Zero strange charges.',
+        medStatus: 'Blood pressure pill taken with breakfast.',
+        readDigest: 'Read Morning Digest Aloud',
+        checkMessage: 'Check a Message or Bill',
+        scannerTitle: 'Did someone send you a message or bill?',
+        scannerInstruction: 'Paste the text below, or choose a quick sample to check for scams and sneaky charges.',
+        btnScan: 'Analyze For Safety Now',
+        dangerBadge: '⚠️ DANGER: Do Not Trust This',
+        safeBadge: '✅ SAFE: Legitimate Statement',
+        callFamily: 'Call Family',
+        allClear: 'All Clear / Done',
+        familyTitle: 'Speak with someone you trust',
+        familySub: 'If anything feels confusing or scary, tap a button below to call immediately.',
+        daughterName: 'Sarah (Daughter)',
+        bankName: 'My Bank Helpline',
+        doctorName: 'Dr. Miller’s Clinic'
+      },
+      'hi-IN': {
+        date: 'शुक्रवार, २४ अक्टूबर',
+        salutation: 'नमस्ते आदरणीय दादू जी। प्रणाम। आज सब कुशल-मंगल है।',
+        audioCaption: 'आवाज़ में सुनने के लिए नीचे सुनें बटन दबाएँ',
+        audioStatus: 'आवाज़ तैयार है',
+        masterListen: 'सुनें (Listen)',
+        masterStop: 'रोकें (Stop)',
+        tabMorning: '📰 सुबह का समाचार',
+        tabScanner: '🔍 सुरक्षा जांच',
+        tabFamily: '📞 परिवार से बात',
+        digestHeadline: 'आज सब कुछ शांत और सुरक्षित है।',
+        digestSummary: 'आपके बैंक खाते में सब सुरक्षित है। दोपहर २ बजे दवाइयाँ घर पहुँचेंगी। आज कोई बिल नहीं भरना है।',
+        bankStatus: 'बैंक खाता पूरी तरह सुरक्षित है। कोई नया खर्च नहीं।',
+        medStatus: 'सुबह नाश्ते के बाद बी.पी. की गोली ले ली गई है।',
+        readDigest: 'यह समाचार आवाज़ में सुनें',
+        checkMessage: 'कोई संदेश या बिल की जाँच करें',
+        scannerTitle: 'क्या किसी ने नया संदेश या बिल भेजा है?',
+        scannerInstruction: 'नीचे संदेश लिखें या पेस्ट करें। हम तुरंत बताएँगे कि यह सुरक्षित है या कोई ठगी है।',
+        btnScan: 'जाँच करें (सुरक्षा स्कैन)',
+        dangerBadge: '⚠️ सावधान: यह संदेश संदिग्ध और खतरनाक है',
+        safeBadge: '✅ सुरक्षित: यह संदेश असली और सही है',
+        callFamily: 'परिवार को फ़ोन मिलाएँ',
+        allClear: 'सब ठीक है (समाप्त)',
+        familyTitle: 'अपने प्रियजनों से बात करें',
+        familySub: 'अगर कोई भी बात समझ न आए या चिंता हो, तुरंत यह बटन दबाकर बात करें।',
+        daughterName: 'आरती (बेटी)',
+        bankName: 'स्टेट बैंक ग्राहक सुरक्षा',
+        doctorName: 'डॉक्टर वर्मा क्लिनिक'
+      },
+      'ja-JP': {
+        date: '10月24日 金曜日',
+        salutation: 'おはようございます、タナカ様。ごゆっくりお過ごしください。',
+        audioCaption: '読み上げボタンを押すと、声でお知らせします',
+        audioStatus: '音声利用可能',
+        masterListen: '聞く (Listen)',
+        masterStop: '停止 (Stop)',
+        tabMorning: '📰 朝のお便り',
+        tabScanner: '🔍 安全スキャン',
+        tabFamily: '📞 ご家族・相談',
+        digestHeadline: '本日も安心・安全にお過ごしいただけます。',
+        digestSummary: '口座は安全に保護されています。お薬の配送は午後2時を予定しています。本日の支払い期限はありません。',
+        bankStatus: '口座は安全です。不審な請求はありません。',
+        medStatus: '朝食後の血圧のお薬は服用済みです。',
+        readDigest: '内容を音声で聞く',
+        checkMessage: '不審なメールや請求書を確認',
+        scannerTitle: '気になるメールや請求書が届きましたか？',
+        scannerInstruction: '内容をここに貼り付けてください。詐欺や怪しいリンクがないか優しく確認します。',
+        btnScan: '安全を確認する',
+        dangerBadge: '⚠️ 警告: 不審なメッセージです',
+        safeBadge: '✅ 安全: 正当なお知らせです',
+        callFamily: '家族に電話する',
+        allClear: '確認完了',
+        familyTitle: '信頼できる連絡先',
+        familySub: '少しでも不安な時は、ボタン一つでいつでも相談できます。',
+        daughterName: '美咲 (娘)',
+        bankName: '銀行サポート窓口',
+        doctorName: '佐藤クリニック'
+      }
+    };
+
+    // PII Masking Engine (Regex sanitization before model submission)
+    function sanitizePII(text) {
+      if (!text) return '';
+      // Mask phone numbers (US and international formats)
+      const phoneRegex = /(\+?\d{1,3}[-.\s]?)?(\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/g;
+      // Mask email addresses
+      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+      // Mask credit card / account 16-digit patterns
+      const cardRegex = /\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g;
+
+      return text
+        .replace(phoneRegex, '[PHONE_PROTECTED]')
+        .replace(emailRegex, '[EMAIL_PROTECTED]')
+        .replace(cardRegex, '[ACCOUNT_MASKED]');
+    }
+
+    // Change Locale handler
+    function changeLocale(locale) {
+      currentLocale = locale;
+      const dict = i18n[locale] || i18n['en-US'];
+
+      document.getElementById('masthead-date').innerText = dict.date;
+      document.getElementById('salutation-text').innerText = dict.salutation;
+      document.getElementById('audio-caption').innerText = dict.audioCaption;
+      document.getElementById('master-tts-label').innerText = dict.masterListen;
+
+      // Tabs
+      document.getElementById('tab-morning').innerText = dict.tabMorning;
+      document.getElementById('tab-scanner').innerText = dict.tabScanner;
+      document.getElementById('tab-family').innerText = dict.tabFamily;
+
+      // Morning card
+      document.getElementById('digest-headline').innerText = dict.digestHeadline;
+      document.getElementById('digest-summary').innerText = dict.digestSummary;
+      document.getElementById('bank-status-text').innerText = dict.bankStatus;
+      document.getElementById('med-status-text').innerText = dict.medStatus;
+      document.getElementById('btn-read-digest-label').innerText = dict.readDigest;
+      document.getElementById('btn-check-message-label').innerText = dict.checkMessage;
+
+      // Scanner card
+      document.getElementById('scanner-title').innerText = dict.scannerTitle;
+      document.getElementById('scanner-instruction').innerText = dict.scannerInstruction;
+      document.getElementById('btn-scan-label').innerText = dict.btnScan;
+
+      // Family Card
+      document.getElementById('family-title').innerText = dict.familyTitle;
+      document.getElementById('family-sub').innerText = dict.familySub;
+      document.getElementById('contact-1-name').innerText = dict.daughterName;
+      document.getElementById('contact-2-name').innerText = dict.bankName;
+      document.getElementById('contact-3-name').innerText = dict.doctorName;
+
+      // Result affordance labels
+      document.getElementById('btn-call-family-label').innerText = dict.callFamily;
+      document.getElementById('btn-dismiss-label').innerText = dict.allClear;
+
+      stopSpeech();
+    }
+
+    // Single-Focus Card Switching
+    function switchMode(mode) {
+      stopSpeech();
+      currentMode = mode;
+
+      const cards = ['card-morning', 'card-scanner', 'card-result', 'card-family'];
+      cards.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      });
+
+      // Tab styles reset
+      const tabs = [
+        { id: 'tab-morning', target: 'morning' },
+        { id: 'tab-scanner', target: 'scanner' },
+        { id: 'tab-family', target: 'family' }
+      ];
+
+      tabs.forEach(t => {
+        const el = document.getElementById(t.id);
+        if (!el) return;
+        if (t.target === mode || (mode === 'result' && t.target === 'scanner')) {
+          el.className = 'flex-1 py-2.5 rounded-lg font-bold text-sm sm:text-base text-center transition-all bg-[#1A1A1A] text-paper shadow-tactile-dark';
+        } else {
+          el.className = 'flex-1 py-2.5 rounded-lg font-bold text-sm sm:text-base text-center transition-all text-[#4A4A4A] hover:text-[#1A1A1A]';
+        }
+      });
+
+      if (mode === 'morning') document.getElementById('card-morning').classList.remove('hidden');
+      if (mode === 'scanner') document.getElementById('card-scanner').classList.remove('hidden');
+      if (mode === 'result') document.getElementById('card-result').classList.remove('hidden');
+      if (mode === 'family') document.getElementById('card-family').classList.remove('hidden');
+
+      lucide.createIcons();
+    }
+
+    // Load sample text
+    function loadSample(type) {
+      const textarea = document.getElementById('message-input');
+      if (type === 'scam') {
+        if (currentLocale === 'hi-IN') {
+          textarea.value = "बिजली विभाग: आपका बिजली बिल बकाया है। आज रात 9:30 बजे बिजली काट दी जाएगी। तुरंत इस लिंक पर क्लिक करें: http://fake-power.xyz या 9876543210 पर कॉल करें।";
+        } else if (currentLocale === 'ja-JP') {
+          textarea.value = "東京電力からのお知らせ：電気料金の未払いがあります。本日中に下記リンクより支払われない場合、送電を停止します。http://fake-tepco.jp";
+        } else {
+          textarea.value = "URGENT: Power Disconnect Notice. Your electricity will be turned off in 45 minutes due to an unpaid balance of $112. Click link now to pay: bit.ly/power-pay-urgent or call 555-0199.";
+        }
+      } else {
+        if (currentLocale === 'hi-IN') {
+          textarea.value = "नगर निगम जल विभाग: अक्टूबर माह का पानी का बिल ₹350 प्राप्त हुआ। भुगतान की अंतिम तिथि 15 नवंबर है। धन्यवाद।";
+        } else if (currentLocale === 'ja-JP') {
+          textarea.value = "水道局より：10月分水道料金のご案内。ご請求金額は3,400円です。振替日は11月10日です。";
+        } else {
+          textarea.value = "City Water Utility: Your monthly statement for October is $34.50. Scheduled automatic deduction on Nov 12. No action needed.";
+        }
+      }
+    }
+
+    function clearScanner() {
+      document.getElementById('message-input').value = '';
+    }
+
+    // Multimodal AI Analysis with 3-Part Output Structure
+    function runMultimodalAnalysis() {
+      const rawInput = document.getElementById('message-input').value.trim();
+      if (!rawInput) {
+        alert(currentLocale === 'hi-IN' ? 'कृपया जाँच के लिए कोई संदेश लिखें।' : 'Please enter or paste a message to analyze.');
+        return;
+      }
+
+      // 1. Guardrail: Mask PII
+      const sanitized = sanitizePII(rawInput);
+
+      // Determine Scam vs Safe heuristic (simulating Gemini 1.5 multimodal safety classification)
+      const isScam = /urgent|disconnect|cut off|bit\.ly|link|suspicious|password|तुरंत|काट दी|बिजली|未払い|停止/i.test(rawInput);
+
+      renderResultCard(isScam, sanitized);
+      switchMode('result');
+    }
+
+    function renderResultCard(isScam, sanitizedText) {
+      const dict = i18n[currentLocale] || i18n['en-US'];
+      const resultBadge = document.getElementById('result-status-badge');
+      const iconBox = document.getElementById('result-icon-box');
+      const iconEl = document.getElementById('result-icon');
+      const statusTitle = document.getElementById('result-status-title');
+      const statusSub = document.getElementById('result-status-sub');
+      const summaryEl = document.getElementById('result-plain-summary');
+      const actionEl = document.getElementById('result-recommended-action');
+
+      if (isScam) {
+        // Danger Treatment (Warm Crimson, never neon)
+        resultBadge.className = 'p-3.5 rounded-xl border-2 mb-4 flex items-center gap-3 bg-crimson-light border-crimson';
+        iconBox.className = 'w-10 h-10 rounded-full bg-crimson text-white flex items-center justify-center flex-shrink-0';
+        iconEl.setAttribute('data-lucide', 'alert-triangle');
+
+        if (currentLocale === 'hi-IN') {
+          statusTitle.innerText = '⚠️ सावधान: यह संदेश एक ठगी (Scam) है';
+          statusSub.innerText = 'सुरक्षा चेतावनी';
+          summaryEl.innerText = 'यह संदेश बिजली काटने का झूठा डर दिखाकर आपके पैसे चुराने की साज़िश है।';
+          actionEl.innerText = 'संदेश में दिए गए लिंक पर बिल्कुल क्लिक न करें। इसे तुरंत हटा दें।';
+        } else if (currentLocale === 'ja-JP') {
+          statusTitle.innerText = '⚠️ 警告: 不審な詐欺メッセージです';
+          statusSub.innerText = '安全スキャン結果';
+          summaryEl.innerText = '送電停止を装い、暗証番号やお金を騙し取ろうとする危険な偽メッセージです。';
+          actionEl.innerText = 'リンクは絶対に押さずに削除してください。電気は停止されません。';
+        } else {
+          statusTitle.innerText = '⚠️ DANGER: Do Not Trust This';
+          statusSub.innerText = 'Scam Detected';
+          summaryEl.innerText = 'This is a fake urgent alert designed to steal money. Your real utility is safe.';
+          actionEl.innerText = 'Do not click the web link. Delete the message. Call your family contact if worried.';
+        }
+      } else {
+        // Safe Treatment (Forest Green)
+        resultBadge.className = 'p-3.5 rounded-xl border-2 mb-4 flex items-center gap-3 bg-forest-light border-forest';
+        iconBox.className = 'w-10 h-10 rounded-full bg-forest text-white flex items-center justify-center flex-shrink-0';
+        iconEl.setAttribute('data-lucide', 'shield-check');
+
+        if (currentLocale === 'hi-IN') {
+          statusTitle.innerText = '✅ सुरक्षित: यह संदेश बिल्कुल सही है';
+          statusSub.innerText = 'सत्यापित विवरण';
+          summaryEl.innerText = 'यह पानी का सामान्य मासिक बिल है। इसमें कोई छुपा खतरा या लिंक नहीं है।';
+          actionEl.innerText = 'कोई चिंता की बात नहीं है। तय तारीख पर सामान्य तरीके से भुगतान कर सकते हैं।';
+        } else if (currentLocale === 'ja-JP') {
+          statusTitle.innerText = '✅ 安全: 正当な利用明細です';
+          statusSub.innerText = '確認完了';
+          summaryEl.innerText = '毎月の水道料金の正規のご案内です。不審な点はありません。';
+          actionEl.innerText = '特別な対応は不要です。振替日までそのままで問題ありません。';
+        } else {
+          statusTitle.innerText = '✅ SAFE: Normal Verified Statement';
+          statusSub.innerText = 'Clean & Verified';
+          summaryEl.innerText = 'This is a routine monthly utility bill. There are no suspicious demands or hidden fees.';
+          actionEl.innerText = 'No immediate action required. Your scheduled auto-pay will process normally.';
+        }
+      }
+
+      lucide.createIcons();
+    }
+
+    // Call Action Handlers
+    function callFamilyContact() {
+      const dict = i18n[currentLocale] || i18n['en-US'];
+      alert(`📞 Dialing verified family contact: ${dict.daughterName}...`);
+    }
+
+    function triggerCall(name, number) {
+      alert(`📞 Calling ${name} (${number}). Connecting now...`);
+    }
+
+    // ==================== WEB SPEECH API (NATIVE TTS) ====================
+    function stopSpeech() {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      isSpeaking = false;
+      document.getElementById('audio-visualizer').classList.add('hidden');
+      document.getElementById('master-tts-label').innerText = i18n[currentLocale]?.masterListen || 'Listen';
+      const badge = document.getElementById('audio-status-badge');
+      if (badge) badge.className = 'inline-block w-2 h-2 rounded-full bg-forest';
+    }
+
+    function readCardAloud(cardType) {
+      if (!('speechSynthesis' in window)) {
+        alert('Voice reading is not supported on this browser.');
+        return;
+      }
+
+      stopSpeech();
+
+      let textToRead = '';
+      if (cardType === 'digest') {
+        const headline = document.getElementById('digest-headline').innerText;
+        const summary = document.getElementById('digest-summary').innerText;
+        const bank = document.getElementById('bank-status-text').innerText;
+        const med = document.getElementById('med-status-text').innerText;
+        textToRead = `${headline}. ${summary}. ${bank}. ${med}`;
+      } else if (cardType === 'result') {
+        const title = document.getElementById('result-status-title').innerText;
+        const summary = document.getElementById('result-plain-summary').innerText;
+        const action = document.getElementById('result-recommended-action').innerText;
+        textToRead = `${title}. ${summary}. Recommended action: ${action}`;
+      }
+
+      speakText(textToRead);
+    }
+
+    function toggleGlobalSpeech() {
+      if (isSpeaking) {
+        stopSpeech();
+      } else {
+        if (currentMode === 'morning') readCardAloud('digest');
+        else if (currentMode === 'result') readCardAloud('result');
+        else if (currentMode === 'family') {
+          const title = document.getElementById('family-title').innerText;
+          const sub = document.getElementById('family-sub').innerText;
+          speakText(`${title}. ${sub}`);
+        } else {
+          const title = document.getElementById('scanner-title').innerText;
+          const sub = document.getElementById('scanner-instruction').innerText;
+          speakText(`${title}. ${sub}`);
+        }
+      }
+    }
+
+    function speakText(text) {
+      if (!('speechSynthesis' in window) || !text) return;
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = currentLocale;
+      // Slower, clearer speech rate tailored for senior cognitive ease
+      utterance.rate = 0.88;
+      utterance.pitch = 1.0;
+
+      utterance.onstart = function() {
+        isSpeaking = true;
+        document.getElementById('audio-visualizer').classList.remove('hidden');
+        document.getElementById('master-tts-label').innerText = i18n[currentLocale]?.masterStop || 'Stop';
+        const badge = document.getElementById('audio-status-badge');
+        if (badge) badge.className = 'inline-block w-2 h-2 rounded-full bg-amber animate-ping';
+      };
+
+      utterance.onend = function() {
+        stopSpeech();
+      };
+
+      utterance.onerror = function() {
+        stopSpeech();
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+  </script>
+</body>
+</html>

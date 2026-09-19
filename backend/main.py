@@ -1,5 +1,5 @@
 """
-ElderEase 2.0 - FastAPI Production Core Backend
+ElderEase - FastAPI Production Core Backend
 Multimodal, Culturally-Adaptive, Hyper-Accessible GenAI Companion for Senior Citizens (65+)
 Security Architecture: Edge PII Masking, Urgency Heuristics, and Gemini GenAI Engine
 """
@@ -122,9 +122,9 @@ if gemini_api_key:
 
 # ----------------- FASTAPI INITIALIZATION -----------------
 app = FastAPI(
-    title="ElderEase 2.0 API",
+    title="ElderEase API",
     description="Multimodal, Culturally-Adaptive GenAI Safety Companion for Seniors",
-    version="2.4.0",
+    version="1.0.0",
 )
 
 app.add_middleware(
@@ -139,7 +139,7 @@ app.add_middleware(
 def health():
     return {
         "status": "healthy",
-        "service": "ElderEase 2.0 FastAPI Core",
+        "service": "ElderEase FastAPI Core",
         "gemini_configured": gemini_client is not None,
     }
 
@@ -180,7 +180,7 @@ Rules:
 
             # Enforce Structured Output via GenerateContentConfig
             response = gemini_client.models.generate_content(
-                model="gemini-3.8-flash",
+                model="gemini-3.6-flash",
                 contents=parts,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",

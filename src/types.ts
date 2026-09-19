@@ -14,6 +14,7 @@ export interface SafetyAnalysisResult {
   urgencyLevel: 'HIGH' | 'MEDIUM' | 'LOW';
   confidenceScore: number;
   timestamp: string;
+  engineType?: 'gemini-realtime' | 'heuristic-edge';
 }
 
 export interface TrustedContact {

@@ -98,7 +98,8 @@ export default function App() {
   const handleReadAdviceAloud = () => {
     if (!analysisResult) return;
     speechEngine.stopTTS();
-    const textToRead = `${analysisResult.statusTitle}. ${analysisResult.fifteenWordSummary}. Recommended step: ${analysisResult.recommendedAction}`;
+    const stepPrefix = locale === 'hi-IN' ? 'सलाह: ' : locale === 'ja-JP' ? '推奨対応: ' : 'Recommended step: ';
+    const textToRead = `${analysisResult.statusTitle}. ${analysisResult.fifteenWordSummary}. ${stepPrefix}${analysisResult.recommendedAction}`;
 
     speechEngine.speak(
       textToRead,

@@ -8,6 +8,7 @@ import {
   PhoneCall,
   Check,
   ShieldAlert,
+  Sparkles,
 } from 'lucide-react';
 import { LocaleType, SafetyAnalysisResult } from '../types';
 import { translations } from '../utils/i18n';
@@ -39,13 +40,25 @@ export const ResultCard: React.FC<ResultCardProps> = ({
         className="bg-[#FAF7F0] border-2 border-[#1A1A1A] rounded-2xl p-5 sm:p-6 shadow-tactile flex-1 flex flex-col justify-between"
       >
         <div>
-          {/* Edge PII Sanitized Header Badge */}
-          <div className="flex items-center justify-between border-b border-[#E4DCD0] pb-3 mb-4">
+          {/* Edge PII Sanitized Header Badge & Real-Time AI Badge */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E4DCD0] pb-3 mb-4">
             <span className="text-xs font-bold text-[#4A4A4A] uppercase flex items-center gap-1.5">
               <CheckCheck className="w-4 h-4 text-[#1E4D2B]" />
               <span>{t.piiSanitizedBadge}</span>
             </span>
-            <span className="text-xs font-bold text-[#4A4A4A]">{result.timestamp}</span>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#1E4D2B] bg-[#E8F3EB] px-2 py-0.5 rounded border border-[#C2E0C9]">
+                <Sparkles className="w-3 h-3 text-[#1E4D2B]" />
+                <span>
+                  {locale === 'hi-IN'
+                    ? 'रीयल-टाइम जेमिनी एआई'
+                    : locale === 'ja-JP'
+                    ? 'Gemini生成AI稼働中'
+                    : 'Real-Time Gemini AI'}
+                </span>
+              </span>
+              <span className="text-xs font-bold text-[#4A4A4A]">{result.timestamp}</span>
+            </div>
           </div>
 
           {/* PART 1: LARGE HIGH-CONTRAST RED / GREEN SAFETY BADGE */}

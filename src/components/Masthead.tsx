@@ -37,9 +37,6 @@ export const Masthead: React.FC<MastheadProps> = ({
             <h1 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-[#1A1A1A]">
               ElderEase
             </h1>
-            <span className="px-2 py-0.5 text-[11px] font-extrabold uppercase bg-[#1A1A1A] text-[#FDFBF7] rounded tracking-wide">
-              2.0
-            </span>
           </div>
           <p id="salutation-text" className="text-base sm:text-lg text-[#1A1A1A] font-semibold mt-1 leading-snug">
             {t.salutation}

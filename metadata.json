@@ -1,5 +1,5 @@
 {
-  "name": "ElderEase 2.0",
+  "name": "ElderEase",
   "description": "Multimodal, culturally-adaptive, hyper-accessible GenAI companion for seniors (65+) with Newspaper Calm UI, Edge PII Sanitizer, and Voice Guidance.",
   "requestFramePermissions": [
     "camera",

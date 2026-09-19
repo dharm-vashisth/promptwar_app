@@ -1,5 +1,5 @@
 """
-ElderEase 2.0 - Enterprise Backend Test Suite
+ElderEase - Enterprise Backend Test Suite
 Framework: pytest, FastAPI TestClient (httpx), unittest.mock
 Validates:
 - Edge PII Sanitization (Phone, Email, Credit Card, SSN, Aadhaar)

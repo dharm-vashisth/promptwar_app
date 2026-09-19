@@ -7,6 +7,7 @@ import { ResultCard } from '../src/components/ResultCard';
 import { ScannerCard } from '../src/components/ScannerCard';
 import { FamilyCard } from '../src/components/FamilyCard';
 import { SafetyAnalysisResult } from '../src/types';
+import { speechEngine } from '../src/utils/speech';
 
 // Mock speech engine to isolate unit & integration tests from native browser audio
 vi.mock('../src/utils/speech', () => ({
@@ -24,6 +25,36 @@ vi.mock('../src/utils/speech', () => ({
     isListening: vi.fn().mockReturnValue(false),
   },
 }));
+
+const mockSafeResult: SafetyAnalysisResult = {
+  safetyStatus: 'SAFE',
+  statusTitle: '✅ SAFE: Legitimate Statement',
+  statusSub: 'Clean & Verified',
+  fifteenWordSummary: 'This is a routine monthly utility statement. There are no suspicious demands or hidden fees.',
+  recommendedAction: 'No immediate action required. Your scheduled auto-pay will process normally.',
+  piiMasked: false,
+  sanitizedInput: 'Monthly water bill statement: $34.50',
+  detectedScamIndicators: [],
+  urgencyLevel: 'LOW',
+  confidenceScore: 0.95,
+  timestamp: '10:16 AM',
+  engineType: 'gemini-realtime',
+};
+
+const mockDangerResult: SafetyAnalysisResult = {
+  safetyStatus: 'DANGER',
+  statusTitle: '⚠️ DANGER: Do Not Trust This',
+  statusSub: 'Scam Detected',
+  fifteenWordSummary: 'This is a fake urgency message designed to steal money. Your real utility is safe.',
+  recommendedAction: 'Do not click the web link. Delete the message. Call your family contact if concerned.',
+  piiMasked: true,
+  sanitizedInput: 'Electricity bill unpaid! Power cut at 9PM. Pay here: bit.ly/34x',
+  detectedScamIndicators: ['Artificial Urgency (< 2 hours)', 'Bit.ly Obfuscated Shortener Link'],
+  urgencyLevel: 'HIGH',
+  confidenceScore: 0.99,
+  timestamp: '10:15 AM',
+  engineType: 'gemini-realtime',
+};
 
 // Mock safety analysis service
 vi.mock('../src/services/safetyService', () => ({
@@ -153,34 +184,6 @@ describe('ElderEase Frontend Test Suite', () => {
   // 3. SAFETY ALERT STATE RENDERING (DANGER VS SAFE)
   // ===================================================================
   describe('Safety Alert State Rendering', () => {
-    const mockDangerResult: SafetyAnalysisResult = {
-      safetyStatus: 'DANGER',
-      statusTitle: '⚠️ DANGER: Do Not Trust This',
-      statusSub: 'Scam & Threat Detected',
-      fifteenWordSummary: 'This is a fake urgency message designed to steal money. Your real utility is safe.',
-      recommendedAction: 'Do not click the web link. Delete the message. Call your family contact if concerned.',
-      piiMasked: true,
-      sanitizedInput: '[PHONE_REDACTED] power cut in 45 minutes',
-      detectedScamIndicators: ['Urgent Shutoff Threat', 'Suspicious Payment Link'],
-      urgencyLevel: 'HIGH',
-      confidenceScore: 0.99,
-      timestamp: '10:15 AM',
-    };
-
-    const mockSafeResult: SafetyAnalysisResult = {
-      safetyStatus: 'SAFE',
-      statusTitle: '✅ SAFE: Legitimate Statement',
-      statusSub: 'Clean & Verified',
-      fifteenWordSummary: 'This is a routine monthly utility statement. There are no suspicious demands or hidden fees.',
-      recommendedAction: 'No immediate action required. Your scheduled auto-pay will process normally.',
-      piiMasked: false,
-      sanitizedInput: 'Monthly water bill statement: $34.50',
-      detectedScamIndicators: [],
-      urgencyLevel: 'LOW',
-      confidenceScore: 0.95,
-      timestamp: '10:16 AM',
-    };
-
     it('renders high-contrast DANGER warning state with all 3 structured sections', () => {
       const handleReadAdvice = vi.fn();
       const handleCallFamily = vi.fn();
@@ -317,6 +320,45 @@ describe('ElderEase Frontend Test Suite', () => {
       // End call
       fireEvent.click(screen.getByRole('button', { name: /End Call/i }));
       expect(screen.queryByText(/Connecting Direct Line/i)).not.toBeInTheDocument();
+    });
+
+    it('sparks Hindi speech when Hindi locale is selected', () => {
+      render(<App />);
+
+      // Switch to Hindi
+      const localeSelect = screen.getByLabelText(/Language/i);
+      fireEvent.change(localeSelect, { target: { value: 'hi-IN' } });
+
+      // Check Hindi Morning Digest read aloud button is present
+      const hindiSpeakBtn = screen.getByRole('button', { name: /यह सुबह का समाचार आवाज़ में सुनें/i });
+      expect(hindiSpeakBtn).toBeInTheDocument();
+
+      // Click read aloud
+      fireEvent.click(hindiSpeakBtn);
+
+      // Verify speechEngine.speak was called with 'hi-IN'
+      expect(speechEngine.speak).toHaveBeenCalledWith(
+        expect.stringContaining('शांत'),
+        'hi-IN',
+        expect.any(Function),
+        expect.any(Function),
+        expect.any(Function)
+      );
+    });
+
+    it('renders Real-Time Gemini AI badge in ResultCard', () => {
+      render(
+        <ResultCard
+          locale="hi-IN"
+          result={mockSafeResult}
+          isSpeaking={false}
+          onReadAdviceAloud={vi.fn()}
+          onCallFamily={vi.fn()}
+          onDismiss={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText('रीयल-टाइम जेमिनी एआई')).toBeInTheDocument();
     });
   });
 });

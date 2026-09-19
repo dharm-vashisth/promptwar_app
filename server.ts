@@ -33,10 +33,86 @@ function getGeminiClient(): GoogleGenAI | null {
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    service: 'ElderEase 2.0 Security Core',
+    service: 'ElderEase Security Core',
     geminiEnabled: !!process.env.GEMINI_API_KEY,
     timestamp: new Date().toISOString(),
   });
+});
+
+// Text-to-Speech Streaming Endpoint with Native Hindi & Regional Voice Synthesis
+app.get('/api/tts', async (req, res) => {
+  try {
+    const text = (req.query.text as string) || '';
+    const locale = (req.query.locale as string) || 'en-US';
+
+    if (!text.trim()) {
+      return res.status(400).json({ error: 'Text parameter is required' });
+    }
+
+    const clean = text
+      .replace(/[\u{1F300}-\u{1F9FF}]/gu, '')
+      .replace(/[⚠️✅💊🔍⚡📰📞]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const tl = locale.startsWith('hi') ? 'hi' : locale.startsWith('ja') ? 'ja' : 'en';
+
+    // Break into sentences/chunks under 160 characters for natural cadence
+    const sentences = clean.match(/[^.!?।。]+[.!?।。]?/g) || [clean];
+    const chunks: string[] = [];
+    let current = '';
+
+    for (const s of sentences) {
+      if ((current + ' ' + s).length < 160) {
+        current = current ? current + ' ' + s : s;
+      } else {
+        if (current) chunks.push(current);
+        if (s.length < 160) {
+          current = s;
+        } else {
+          const words = s.split(' ');
+          let sub = '';
+          for (const w of words) {
+            if ((sub + ' ' + w).length < 150) {
+              sub = sub ? sub + ' ' + w : w;
+            } else {
+              chunks.push(sub);
+              sub = w;
+            }
+          }
+          current = sub;
+        }
+      }
+    }
+    if (current) chunks.push(current);
+
+    const buffers: Buffer[] = [];
+    for (const chunk of chunks.slice(0, 8)) {
+      if (!chunk.trim()) continue;
+      const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk.trim())}&tl=${tl}&client=tw-ob`;
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      });
+      if (response.ok) {
+        const arrayBuf = await response.arrayBuffer();
+        buffers.push(Buffer.from(arrayBuf));
+      }
+    }
+
+    if (buffers.length > 0) {
+      const combined = Buffer.concat(buffers);
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.send(combined);
+    } else {
+      return res.status(502).json({ error: 'Failed to synthesize audio stream' });
+    }
+  } catch (err) {
+    console.error('TTS endpoint error:', err);
+    res.status(500).json({ error: 'Audio synthesis failed' });
+  }
 });
 
 // Primary Multimodal Safety & Scam Analysis Endpoint
@@ -70,7 +146,7 @@ app.post('/api/analyze', async (req, res) => {
         }
 
         const promptText = `
-You are the ElderEase 2.0 Calm Security Engine. Your user is an elderly citizen (65+ years old).
+You are the ElderEase Calm Security Engine. Your user is an elderly citizen (65+ years old).
 Analyze this message, bill, or notice for scams, financial fraud, phishing, or artificial panic threats.
 
 INPUT TEXT (PII has already been redacted on edge):
@@ -89,17 +165,17 @@ STRICT SENIOR SAFETY RULES:
 2. If this is a routine utility bill, legitimate medical refill, or official reminder:
    - safetyStatus: "SAFE"
    - urgencyLevel: "LOW"
-3. Cultural Adaptation:
-   - For hi-IN (Hindi): Use respectful tone (प्रणाम, सादर, सरल भाषा), 5th-grade simple Hindi words.
-   - For ja-JP (Japanese): Use polite, reassuring keigo phrasing.
-   - For en-US: Clear, plain English.
+3. Cultural & Language Translation Rules:
+   - For hi-IN (Hindi): All JSON string fields (statusTitle, statusSub, fifteenWordSummary, recommendedAction, detectedScamIndicators) MUST BE WRITTEN ENTIRELY IN NATURAL, SIMPLE HINDI (Devanagari script). Never return English words or English text in hi-IN mode. Use a respectful tone suitable for Indian grandparents (आदरणीय, सरल भाषा).
+   - For ja-JP (Japanese): All JSON string fields MUST BE WRITTEN ENTIRELY IN POLITE JAPANESE (keigo).
+   - For en-US: Clear, plain 5th-grade English.
 4. fifteenWordSummary MUST be approximately 15 words or fewer, completely jargon-free.
-5. recommendedAction MUST be exactly ONE concrete, actionable step (e.g., "Do not click link. Delete message." or "No action needed. Auto-pay is scheduled.")
+5. recommendedAction MUST be exactly ONE concrete, actionable step (e.g., in Hindi "संदेश में दिए लिंक पर क्लिक न करें। इसे तुरंत हटा दें।" or in English "Do not click link. Delete message.").
 `;
         contents.push({ text: promptText });
 
         const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+          model: 'gemini-3.6-flash',
           contents: contents.length === 1 ? contents[0] : { parts: contents },
           config: {
             responseMimeType: 'application/json',
@@ -156,6 +232,7 @@ STRICT SENIOR SAFETY RULES:
 
         if (response.text) {
           const parsed = JSON.parse(response.text.trim());
+          parsed.engineType = 'gemini-realtime';
           return res.json(parsed);
         }
       } catch (geminiError) {
@@ -183,6 +260,7 @@ STRICT SENIOR SAFETY RULES:
             : ['कृत्रिम तात्कालिकता', 'अज्ञात लिंक'],
           urgencyLevel: 'HIGH',
           confidenceScore: 0.98,
+          engineType: 'heuristic-edge',
         });
       } else if (locale === 'ja-JP') {
         return res.json({
@@ -196,6 +274,7 @@ STRICT SENIOR SAFETY RULES:
             : ['送電停止の脅迫', '偽リンク'],
           urgencyLevel: 'HIGH',
           confidenceScore: 0.97,
+          engineType: 'heuristic-edge',
         });
       } else {
         return res.json({
@@ -209,6 +288,7 @@ STRICT SENIOR SAFETY RULES:
             : ['Urgent Shutoff Threat', 'Suspicious Payment Link'],
           urgencyLevel: 'HIGH',
           confidenceScore: 0.98,
+          engineType: 'heuristic-edge',
         });
       }
     } else {
@@ -222,6 +302,7 @@ STRICT SENIOR SAFETY RULES:
           detectedScamIndicators: [],
           urgencyLevel: 'LOW',
           confidenceScore: 0.95,
+          engineType: 'heuristic-edge',
         });
       } else if (locale === 'ja-JP') {
         return res.json({
@@ -233,6 +314,7 @@ STRICT SENIOR SAFETY RULES:
           detectedScamIndicators: [],
           urgencyLevel: 'LOW',
           confidenceScore: 0.95,
+          engineType: 'heuristic-edge',
         });
       } else {
         return res.json({
@@ -244,6 +326,7 @@ STRICT SENIOR SAFETY RULES:
           detectedScamIndicators: [],
           urgencyLevel: 'LOW',
           confidenceScore: 0.96,
+          engineType: 'heuristic-edge',
         });
       }
     }
@@ -282,7 +365,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`ElderEase 2.0 Server running on http://0.0.0.0:${PORT}`);
+    console.log(`ElderEase Server running on http://0.0.0.0:${PORT}`);
   });
 }
 

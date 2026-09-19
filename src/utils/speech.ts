@@ -8,12 +8,25 @@ interface IWindowSpeech extends Window {
 
 class SpeechEngine {
   private currentUtterance: SpeechSynthesisUtterance | null = null;
+  private audioPlayer: HTMLAudioElement | null = null;
   private recognitionInstance: any = null;
   private isSpeakingState: boolean = false;
   private isListeningState: boolean = false;
+  private cachedVoices: SpeechSynthesisVoice[] = [];
+
+  constructor() {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        this.cachedVoices = window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => {
+          this.cachedVoices = window.speechSynthesis.getVoices();
+        };
+      } catch (_) {}
+    }
+  }
 
   public isTTSSupported(): boolean {
-    return typeof window !== 'undefined' && 'speechSynthesis' in window;
+    return typeof window !== 'undefined' && ('speechSynthesis' in window || typeof Audio !== 'undefined');
   }
 
   public isSTTSupported(): boolean {
@@ -29,25 +42,97 @@ class SpeechEngine {
     onEnd?: () => void,
     onError?: (error: any) => void
   ) {
-    if (!this.isTTSSupported()) {
-      if (onError) onError(new Error('Speech synthesis not supported on this browser'));
-      return;
-    }
-
     this.stopTTS();
 
     if (!text || text.trim().length === 0) return;
 
+    // Clean symbols & emojis so audio pronunciation is natural and pleasant
+    const cleanText = text
+      .replace(/[\u{1F300}-\u{1F9FF}]/gu, '')
+      .replace(/[⚠️✅💊🔍⚡📰📞]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!cleanText) return;
+
+    // Priority 1: High-Fidelity Regional Speech Audio Streaming (Guaranteed Native Hindi)
+    if (typeof window !== 'undefined' && typeof Audio !== 'undefined') {
+      try {
+        const audioUrl = `/api/tts?text=${encodeURIComponent(cleanText)}&locale=${encodeURIComponent(locale)}`;
+        const audio = new Audio(audioUrl);
+        this.audioPlayer = audio;
+
+        audio.onplay = () => {
+          this.isSpeakingState = true;
+          if (onStart) onStart();
+        };
+
+        audio.onended = () => {
+          this.isSpeakingState = false;
+          this.audioPlayer = null;
+          if (onEnd) onEnd();
+        };
+
+        audio.onerror = () => {
+          // If server audio fails (e.g., offline or network hiccup), fallback smoothly to SpeechSynthesis
+          this.audioPlayer = null;
+          this.speakViaSpeechSynthesis(cleanText, locale, onStart, onEnd, onError);
+        };
+
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            // If browser autoplay policy prevents audio or fetch fails, fallback to SpeechSynthesis
+            this.audioPlayer = null;
+            this.speakViaSpeechSynthesis(cleanText, locale, onStart, onEnd, onError);
+          });
+        }
+        return;
+      } catch (audioErr) {
+        // Fallback to speechSynthesis below
+      }
+    }
+
+    // Priority 2: Web Speech API Browser Fallback
+    this.speakViaSpeechSynthesis(cleanText, locale, onStart, onEnd, onError);
+  }
+
+  private speakViaSpeechSynthesis(
+    cleanText: string,
+    locale: LocaleType,
+    onStart?: () => void,
+    onEnd?: () => void,
+    onError?: (error: any) => void
+  ) {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      if (onError) onError(new Error('Speech synthesis not supported on this device'));
+      return;
+    }
+
     try {
-      const utterance = new SpeechSynthesisUtterance(text);
+      const utterance = new SpeechSynthesisUtterance(cleanText);
       utterance.lang = locale;
-      // Senior-friendly deliberate pacing (0.85x speed ensures high comprehension)
+      // Senior-friendly deliberate pacing (0.86x speed ensures high comprehension)
       utterance.rate = 0.86;
       utterance.pitch = 1.0;
 
       // Select voice matching language if available
-      const voices = window.speechSynthesis.getVoices();
-      const matchingVoice = voices.find((v) => v.lang.startsWith(locale) || v.lang.includes(locale.split('-')[0]));
+      const voices =
+        window.speechSynthesis.getVoices().length > 0
+          ? window.speechSynthesis.getVoices()
+          : this.cachedVoices;
+
+      const langPrefix = locale.split('-')[0].toLowerCase();
+      const matchingVoice = voices.find(
+        (v) =>
+          (v.lang &&
+            (v.lang.toLowerCase() === locale.toLowerCase() ||
+              v.lang.toLowerCase().replace('_', '-') === locale.toLowerCase() ||
+              v.lang.toLowerCase().startsWith(langPrefix))) ||
+          (langPrefix === 'hi' && /hindi|हिन्दी|swara|madhur|lekha/i.test(v.name)) ||
+          (langPrefix === 'ja' && /japanese|日本語|kyoko/i.test(v.name))
+      );
+
       if (matchingVoice) {
         utterance.voice = matchingVoice;
       }
@@ -78,8 +163,17 @@ class SpeechEngine {
   }
 
   public stopTTS() {
-    if (this.isTTSSupported()) {
-      window.speechSynthesis.cancel();
+    if (this.audioPlayer) {
+      try {
+        this.audioPlayer.pause();
+        this.audioPlayer.currentTime = 0;
+      } catch (_) {}
+      this.audioPlayer = null;
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (_) {}
     }
     this.isSpeakingState = false;
     this.currentUtterance = null;

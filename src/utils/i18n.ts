@@ -200,7 +200,7 @@ export const translations: Record<LocaleType, TranslationDict> = {
       buttonLabel: '⚡ Inject Scam SMS',
       activeNotice: 'Scam injected: Instant voice warning + family alert workflow active.',
     },
-    footerNote: 'Secure Guardrail Active • ElderEase v2.4 Calm Tech',
+    footerNote: 'Secure Guardrail Active • ElderEase Calm Tech',
   },
 
   'hi-IN': {
@@ -311,7 +311,7 @@ export const translations: Record<LocaleType, TranslationDict> = {
       buttonLabel: '⚡ ठगी संदेश टेस्ट करें',
       activeNotice: 'बिजली कटने का फ़र्ज़ी संदेश लोड हुआ: तुरंत आवाज़ चेतावनी व परिवार अलर्ट तैयार!',
     },
-    footerNote: 'सुरक्षा घेरा सक्रिय • एल्डरईज़ v2.4 काम-टेक',
+    footerNote: 'सुरक्षा घेरा सक्रिय • एल्डरईज़ काम-टेक',
   },
 
   'ja-JP': {
@@ -422,6 +422,6 @@ export const translations: Record<LocaleType, TranslationDict> = {
       buttonLabel: '⚡ 詐欺SMSを即時注入',
       activeNotice: '送電停止詐欺SMSを読み込みました：即時音声警告＋家族通知が動作します。',
     },
-    footerNote: '安心安全ガードレール稼働中 • ElderEase v2.4 Calm Tech',
+    footerNote: '安心安全ガードレール稼働中 • ElderEase Calm Tech',
   },
 };

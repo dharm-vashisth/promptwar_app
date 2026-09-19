@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #F4EFE6;
+    color: #1A1A1A;
+    font-size: 19px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, .font-serif {
+    font-family: 'Newsreader', Georgia, serif;
+  }
+}
+
+/* Subtle newspaper tactile print texture */
+.newsprint-grain {
+  background-image: radial-gradient(#1A1A1A 0.45px, transparent 0.45px);
+  background-size: 14px 14px;
+  opacity: 0.035;
+}
+
+/* Tactile button pressed action feedback */
+.btn-tactile {
+  transition: all 0.12s ease-out;
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-tactile:active {
+  transform: translateY(2px);
+}
+
+/* Tactile shadows with physical depth */
+.shadow-tactile-dark {
+  box-shadow: 0 4px 0 0 #000000, 0 6px 12px -2px rgba(26,26,26,0.25);
+}
+
+.shadow-tactile {
+  box-shadow: 0 4px 0 0 #D4CAC0, 0 6px 14px -2px rgba(26,26,26,0.08);
+}
+
+.shadow-tactile-crimson {
+  box-shadow: 0 4px 0 0 #5E1D0F, 0 6px 12px -2px rgba(140,45,25,0.25);
+}
+
+.shadow-tactile-forest {
+  box-shadow: 0 4px 0 0 #12331C, 0 6px 12px -2px rgba(30,77,43,0.25);
+}
+
+/* Audio Wave Visualizer Animation */
+@keyframes audioPulseWave {
+  0%, 100% { height: 6px; }
+  50% { height: 26px; }
+}
+
+.wave-bar:nth-child(1) { animation: audioPulseWave 1s ease-in-out infinite 0.1s; }
+.wave-bar:nth-child(2) { animation: audioPulseWave 1s ease-in-out infinite 0.25s; }
+.wave-bar:nth-child(3) { animation: audioPulseWave 1s ease-in-out infinite 0.4s; }
+.wave-bar:nth-child(4) { animation: audioPulseWave 1s ease-in-out infinite 0.15s; }
+.wave-bar:nth-child(5) { animation: audioPulseWave 1s ease-in-out infinite 0.3s; }
+

@@ -27,6 +27,11 @@ function getGeminiClient(): GoogleGenAI | null {
   return aiClient;
 }
 
+// In-Memory Audio & Analysis Caches for Zero-Latency Re-Play
+const ttsAudioCache = new Map<string, Buffer>();
+const analysisResultCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL_MS = 15 * 60 * 1000;
+
 // ---------------- API ROUTES ----------------
 
 // Health check
@@ -35,6 +40,8 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     service: 'ElderEase Security Core',
     geminiEnabled: !!process.env.GEMINI_API_KEY,
+    cachedAudioItems: ttsAudioCache.size,
+    cachedAnalysisItems: analysisResultCache.size,
     timestamp: new Date().toISOString(),
   });
 });
@@ -56,6 +63,16 @@ app.get('/api/tts', async (req, res) => {
       .trim();
 
     const tl = locale.startsWith('hi') ? 'hi' : locale.startsWith('ja') ? 'ja' : 'en';
+    const cacheKey = `${tl}:${clean.toLowerCase().substring(0, 180)}`;
+
+    // Instant Cache Hit for repeated audio reads
+    if (ttsAudioCache.has(cacheKey)) {
+      const cachedBuffer = ttsAudioCache.get(cacheKey)!;
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.setHeader('X-ElderEase-Cache', 'HIT');
+      return res.send(cachedBuffer);
+    }
 
     // Break into sentences/chunks under 160 characters for natural cadence
     const sentences = clean.match(/[^.!?।。]+[.!?।。]?/g) || [clean];
@@ -103,8 +120,15 @@ app.get('/api/tts', async (req, res) => {
 
     if (buffers.length > 0) {
       const combined = Buffer.concat(buffers);
+      if (ttsAudioCache.size > 200) {
+        const oldestKey = ttsAudioCache.keys().next().value;
+        if (oldestKey) ttsAudioCache.delete(oldestKey);
+      }
+      ttsAudioCache.set(cacheKey, combined);
+
       res.setHeader('Content-Type', 'audio/mpeg');
-      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.setHeader('X-ElderEase-Cache', 'MISS');
       return res.send(combined);
     } else {
       return res.status(502).json({ error: 'Failed to synthesize audio stream' });
@@ -119,7 +143,7 @@ app.get('/api/tts', async (req, res) => {
 app.post('/api/analyze', async (req, res) => {
   try {
     const {
-      sanitizedText,
+      sanitizedText = '',
       locale = 'en-US',
       detectedUrgencySignals = [],
       imageBase64,
@@ -127,6 +151,19 @@ app.post('/api/analyze', async (req, res) => {
 
     if (!sanitizedText && !imageBase64) {
       return res.status(400).json({ error: 'Text or image input is required' });
+    }
+
+    // Zero-Latency In-Memory Analysis Cache for repeated checks
+    const analysisCacheKey = `${locale}:${sanitizedText.trim().toLowerCase()}`;
+    if (!imageBase64 && analysisResultCache.has(analysisCacheKey)) {
+      const cached = analysisResultCache.get(analysisCacheKey)!;
+      if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        res.setHeader('X-ElderEase-Cache', 'HIT');
+        return res.json({
+          ...cached.data,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        });
+      }
     }
 
     const ai = getGeminiClient();
@@ -146,45 +183,51 @@ app.post('/api/analyze', async (req, res) => {
         }
 
         const promptText = `
-You are the ElderEase Calm Security Engine. Your user is an elderly citizen (65+ years old).
-Analyze this message, bill, or notice for scams, financial fraud, phishing, or artificial panic threats.
+You are ElderEase Engine, a globally adaptable, highly empathetic AI assistant dedicated to protecting, informing, and assisting elderly citizens (65+ years old).
 
-INPUT TEXT (PII has already been redacted on edge):
-"${sanitizedText || '[IMAGE ONLY]'}"
+CORE RESPONSIBILITIES:
+1. SCAM & THREAT DETECTION:
+   - Analyze user inputs for signs of fraud, extreme urgency, impersonation, or hidden fees.
+   - Assign risk level: DANGER (for scam, threat, artificial panic) or SAFE (for normal bills, prescriptions, legitimate updates).
+   - Detect urgency tactics (e.g., "disconnect in 2 hours", "account suspended", "arrest warrant").
 
-DETECTED EDGE SIGNALS:
+2. MULTI-REGION & MULTI-LANGUAGE ADAPTABILITY:
+   - Locale: ${locale}
+   - For hi-IN (Hindi): Recognize Indian fraud patterns (bijli bill cut, bank KYC freeze, OTP theft, lottery prize). Output all text fields in warm, respectful Devanagari Hindi (आदरणीय, सरल भाषा).
+   - For en-US: Recognize US fraud patterns (IRS warrants, Medicare refund, Social Security suspension, utility disconnects).
+   - For ja-JP (Japanese): Recognize Japanese fraud patterns (電力停止, 年金還付金, 口座凍結, マイナンバー). Output all text fields in polite Japanese (keigo).
+
+3. ELDER-FRIENDLY COMMUNICATION:
+   - 5th-grade reading level using simple, calm, and reassuring language.
+   - NEVER use technical jargon (avoid "PII", "Regex", "API", "Phishing"). Use friendly terms like "Personal Information", "Tricky Link", or "Fake Message".
+   - No technical code or raw system errors.
+
+4. SAFETY & PRIVACY GUARDRAILS:
+   - Sensitive IDs and financial numbers have been masked on edge.
+   - fifteenWordSummary MUST be 15 words or fewer, calm and plain.
+   - recommendedAction MUST be exactly ONE crystal-clear next action step.
+
+INPUT TEXT:
+"${sanitizedText || '[IMAGE DOCUMENT SCANNED]'}"
+
+EDGE SIGNALS:
 ${detectedUrgencySignals.join(', ') || 'None'}
-
-LOCALE: ${locale}
-
-STRICT SENIOR SAFETY RULES:
-1. If this is a scam, fake shutoff, phishing link, threat of police, or urgent wire demand:
-   - safetyStatus: "DANGER"
-   - urgencyLevel: "HIGH"
-   - Explain calmly without causing heart-pounding panic.
-2. If this is a routine utility bill, legitimate medical refill, or official reminder:
-   - safetyStatus: "SAFE"
-   - urgencyLevel: "LOW"
-3. Cultural & Language Translation Rules:
-   - For hi-IN (Hindi): All JSON string fields (statusTitle, statusSub, fifteenWordSummary, recommendedAction, detectedScamIndicators) MUST BE WRITTEN ENTIRELY IN NATURAL, SIMPLE HINDI (Devanagari script). Never return English words or English text in hi-IN mode. Use a respectful tone suitable for Indian grandparents (आदरणीय, सरल भाषा).
-   - For ja-JP (Japanese): All JSON string fields MUST BE WRITTEN ENTIRELY IN POLITE JAPANESE (keigo).
-   - For en-US: Clear, plain 5th-grade English.
-4. fifteenWordSummary MUST be approximately 15 words or fewer, completely jargon-free.
-5. recommendedAction MUST be exactly ONE concrete, actionable step (e.g., in Hindi "संदेश में दिए लिंक पर क्लिक न करें। इसे तुरंत हटा दें।" or in English "Do not click link. Delete message.").
 `;
         contents.push({ text: promptText });
 
         const response = await ai.models.generateContent({
-          model: 'gemini-3.6-flash',
+          model: 'gemini-3.8-flash',
           contents: contents.length === 1 ? contents[0] : { parts: contents },
           config: {
+            temperature: 0.1,
+            maxOutputTokens: 350,
             responseMimeType: 'application/json',
             responseSchema: {
               type: Type.OBJECT,
               properties: {
                 safetyStatus: {
                   type: Type.STRING,
-                  description: 'Must be DANGER, SAFE, or CAUTION',
+                  description: 'Must be DANGER or SAFE',
                 },
                 statusTitle: {
                   type: Type.STRING,
@@ -205,11 +248,11 @@ STRICT SENIOR SAFETY RULES:
                 detectedScamIndicators: {
                   type: Type.ARRAY,
                   items: { type: Type.STRING },
-                  description: 'List of specific warning indicators detected',
+                  description: 'List of specific warning indicators detected without technical jargon',
                 },
                 urgencyLevel: {
                   type: Type.STRING,
-                  description: 'HIGH, MEDIUM, or LOW',
+                  description: 'HIGH or LOW',
                 },
                 confidenceScore: {
                   type: Type.NUMBER,
@@ -233,6 +276,20 @@ STRICT SENIOR SAFETY RULES:
         if (response.text) {
           const parsed = JSON.parse(response.text.trim());
           parsed.engineType = 'gemini-realtime';
+
+          // Store in In-Memory Cache
+          if (!imageBase64 && sanitizedText) {
+            if (analysisResultCache.size > 200) {
+              const oldest = analysisResultCache.keys().next().value;
+              if (oldest) analysisResultCache.delete(oldest);
+            }
+            analysisResultCache.set(analysisCacheKey, {
+              data: parsed,
+              timestamp: Date.now(),
+            });
+          }
+
+          res.setHeader('X-ElderEase-Cache', 'MISS');
           return res.json(parsed);
         }
       } catch (geminiError) {
@@ -243,17 +300,18 @@ STRICT SENIOR SAFETY RULES:
     // Heuristic Fallback Engine
     const isThreat =
       detectedUrgencySignals.length > 0 ||
-      /disconnect|cut off|urgent|suspended|police|bit\.ly|gift card|unpaid|shutoff|तुरंत|काट दी|बिजली|未払い|停止/i.test(
+      /disconnect|cut off|urgent|suspended|police|bit\.ly|gift card|unpaid|shutoff|irs|medicare|social security|arrest|तुरंत|काट दी|बिजली|खाता बंद|ओटीपी|未払い|停止|年金|マイナンバー/i.test(
         sanitizedText || ''
       );
 
+    let fallbackData: any;
     if (isThreat) {
       if (locale === 'hi-IN') {
-        return res.json({
+        fallbackData = {
           safetyStatus: 'DANGER',
           statusTitle: '⚠️ सावधान: यह संदेश एक ठगी (Scam) है',
           statusSub: 'धोखाधड़ी व झूठी धमकी',
-          fifteenWordSummary: 'यह संदेश बिजली काटने का झूठा डर दिखाकर पैसे चुराने का प्रयास है।',
+          fifteenWordSummary: 'यह संदेश बिजली या खाता बंद करने का झूठा डर दिखाकर पैसे चुराने का प्रयास है।',
           recommendedAction: 'संदेश में दिए गए लिंक पर बिल्कुल क्लिक न करें। इसे तुरंत हटा दें।',
           detectedScamIndicators: detectedUrgencySignals.length
             ? detectedUrgencySignals
@@ -261,27 +319,27 @@ STRICT SENIOR SAFETY RULES:
           urgencyLevel: 'HIGH',
           confidenceScore: 0.98,
           engineType: 'heuristic-edge',
-        });
+        };
       } else if (locale === 'ja-JP') {
-        return res.json({
+        fallbackData = {
           safetyStatus: 'DANGER',
           statusTitle: '⚠️ 警告: 不審な詐欺メッセージです',
           statusSub: '詐欺を検知',
-          fifteenWordSummary: '送電停止を装い、暗証番号や金銭を騙し取ろうとする危険な偽通知です。',
-          recommendedAction: 'リンクは開かずに削除してください。電力会社に直接確認しても安全です。',
+          fifteenWordSummary: '送電停止や年金還付を装い、金銭を騙し取ろうとする危険な偽通知です。',
+          recommendedAction: 'リンクは開かずに削除してください。家族または公的窓口へご相談ください。',
           detectedScamIndicators: detectedUrgencySignals.length
             ? detectedUrgencySignals
-            : ['送電停止の脅迫', '偽リンク'],
+            : ['即時停止の脅迫', '未確認リンク'],
           urgencyLevel: 'HIGH',
           confidenceScore: 0.97,
           engineType: 'heuristic-edge',
-        });
+        };
       } else {
-        return res.json({
+        fallbackData = {
           safetyStatus: 'DANGER',
           statusTitle: '⚠️ DANGER: Do Not Trust This',
           statusSub: 'Scam & Threat Detected',
-          fifteenWordSummary: 'This is a fake urgency message designed to steal money. Your real utility is safe.',
+          fifteenWordSummary: 'This is a fake urgency message designed to steal money. Your real accounts are safe.',
           recommendedAction: 'Do not click the web link. Delete the message. Call your family contact if concerned.',
           detectedScamIndicators: detectedUrgencySignals.length
             ? detectedUrgencySignals
@@ -289,23 +347,23 @@ STRICT SENIOR SAFETY RULES:
           urgencyLevel: 'HIGH',
           confidenceScore: 0.98,
           engineType: 'heuristic-edge',
-        });
+        };
       }
     } else {
       if (locale === 'hi-IN') {
-        return res.json({
+        fallbackData = {
           safetyStatus: 'SAFE',
           statusTitle: '✅ सुरक्षित: यह सामान्य व सही सूचना है',
           statusSub: 'सत्यापित सामान्य विवरण',
-          fifteenWordSummary: 'यह सामान्य आधिकारिक सूचना या बिल है। इसमें कोई छुपा खतरा या लिंक नहीं है।',
+          fifteenWordSummary: 'यह सामान्य आधिकारिक सूचना या बिल है। इसमें कोई छुपा खतरा या संदिग्ध लिंक नहीं है।',
           recommendedAction: 'कोई तत्काल कार्रवाई आवश्यक नहीं है। सामान्य तरीके से अपने नियत समय पर देखें।',
           detectedScamIndicators: [],
           urgencyLevel: 'LOW',
-          confidenceScore: 0.95,
+          confidenceScore: 0.96,
           engineType: 'heuristic-edge',
-        });
+        };
       } else if (locale === 'ja-JP') {
-        return res.json({
+        fallbackData = {
           safetyStatus: 'SAFE',
           statusTitle: '✅ 安全: 正当な利用明細です',
           statusSub: '確認完了',
@@ -315,9 +373,9 @@ STRICT SENIOR SAFETY RULES:
           urgencyLevel: 'LOW',
           confidenceScore: 0.95,
           engineType: 'heuristic-edge',
-        });
+        };
       } else {
-        return res.json({
+        fallbackData = {
           safetyStatus: 'SAFE',
           statusTitle: '✅ SAFE: Legitimate Statement',
           statusSub: 'Clean & Verified',
@@ -327,9 +385,18 @@ STRICT SENIOR SAFETY RULES:
           urgencyLevel: 'LOW',
           confidenceScore: 0.96,
           engineType: 'heuristic-edge',
-        });
+        };
       }
     }
+
+    if (!imageBase64 && sanitizedText) {
+      analysisResultCache.set(analysisCacheKey, {
+        data: fallbackData,
+        timestamp: Date.now(),
+      });
+    }
+
+    return res.json(fallbackData);
   } catch (err: any) {
     console.error('API Error in /api/analyze:', err);
     res.status(500).json({ error: 'Internal server error analyzing safety payload' });

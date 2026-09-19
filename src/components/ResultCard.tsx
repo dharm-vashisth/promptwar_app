@@ -9,6 +9,7 @@ import {
   Check,
   ShieldAlert,
   Sparkles,
+  Lock,
 } from 'lucide-react';
 import { LocaleType, SafetyAnalysisResult } from '../types';
 import { translations } from '../utils/i18n';
@@ -41,13 +42,13 @@ export const ResultCard: React.FC<ResultCardProps> = ({
       >
         <div>
           {/* Edge PII Sanitized Header Badge & Real-Time AI Badge */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E4DCD0] pb-3 mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E4DCD0] pb-3 mb-3">
             <span className="text-xs font-bold text-[#4A4A4A] uppercase flex items-center gap-1.5">
               <CheckCheck className="w-4 h-4 text-[#1E4D2B]" />
               <span>{t.piiSanitizedBadge}</span>
             </span>
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#1E4D2B] bg-[#E8F3EB] px-2 py-0.5 rounded border border-[#C2E0C9]">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#1E4D2B] bg-[#E8F3EB] px-2.5 py-0.5 rounded-full border border-[#C2E0C9]">
                 <Sparkles className="w-3 h-3 text-[#1E4D2B]" />
                 <span>
                   {locale === 'hi-IN'
@@ -59,6 +60,21 @@ export const ResultCard: React.FC<ResultCardProps> = ({
               </span>
               <span className="text-xs font-bold text-[#4A4A4A]">{result.timestamp}</span>
             </div>
+          </div>
+
+          {/* Reassuring Privacy Confirmation Banner */}
+          <div
+            id="privacy-confirmation-banner"
+            className="mb-4 bg-[#F0F7F2] border border-[#C2E0C9] rounded-xl px-3.5 py-2 flex items-center gap-2 text-xs sm:text-sm font-semibold text-[#1E4D2B]"
+          >
+            <Lock className="w-4 h-4 text-[#1E4D2B] shrink-0" />
+            <span>
+              {locale === 'hi-IN'
+                ? '🔒 आपकी निजी जानकारी और नंबर पूरी तरह सुरक्षित व गुप्त रखे गए हैं'
+                : locale === 'ja-JP'
+                ? '🔒 個人情報や口座番号は完全に非表示・安全に保護されています'
+                : '🔒 Your personal details are completely hidden and safe'}
+            </span>
           </div>
 
           {/* PART 1: LARGE HIGH-CONTRAST RED / GREEN SAFETY BADGE */}

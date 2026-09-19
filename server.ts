@@ -336,17 +336,21 @@ STRICT SENIOR SAFETY RULES:
   }
 });
 
-// Emergency Family Alert Dispatch
-app.post('/api/emergency-alert', (req, res) => {
-  const { contactId, reason, reportSummary } = req.body;
-  console.log(`[ElderEase Emergency Dispatch] Alert sent to contact ${contactId}: ${reason}`);
+// Emergency Family Alert Dispatch (supports both /api/emergency-alert and /api/v1/emergency-alert)
+const handleEmergencyAlert = (req: any, res: any) => {
+  const { contactId, reason, reportSummary, emergencyContact } = req.body;
+  const target = emergencyContact?.fullName || contactId || 'Primary Family Contact';
+  console.log(`[ElderEase Emergency Dispatch] Alert dispatched to ${target}: ${reason || 'Immediate Assistance Requested'}`);
   res.json({
     dispatched: true,
-    contactId,
+    contact: target,
     timestamp: new Date().toISOString(),
     status: 'SMS & Voice Notification Queued to Verified Contact',
   });
-});
+};
+
+app.post('/api/emergency-alert', handleEmergencyAlert);
+app.post('/api/v1/emergency-alert', handleEmergencyAlert);
 
 // ---------------- VITE & STATIC SERVER ----------------
 async function startServer() {

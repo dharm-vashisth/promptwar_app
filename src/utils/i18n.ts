@@ -13,6 +13,7 @@ export interface TranslationDict {
     morning: string;
     scanner: string;
     family: string;
+    profile: string;
   };
   morning: {
     stamp: string;
@@ -105,6 +106,7 @@ export const translations: Record<LocaleType, TranslationDict> = {
       morning: '📰 Morning',
       scanner: '🔍 Safety Scan',
       family: '📞 Help & Family',
+      profile: '⚙️ My Profile',
     },
     morning: {
       stamp: 'Daily Morning Digest',
@@ -216,6 +218,7 @@ export const translations: Record<LocaleType, TranslationDict> = {
       morning: '📰 सुबह का समाचार',
       scanner: '🔍 सुरक्षा जांच',
       family: '📞 परिवार से बात',
+      profile: '⚙️ मेरी प्रोफ़ाइल',
     },
     morning: {
       stamp: 'दैनिक सुबह की पत्रिका',
@@ -327,6 +330,7 @@ export const translations: Record<LocaleType, TranslationDict> = {
       morning: '📰 朝のお便り',
       scanner: '🔍 安全スキャン',
       family: '📞 ご家族・相談',
+      profile: '⚙️ プロフィール設定',
     },
     morning: {
       stamp: '毎朝の安心ダイジェスト',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, Square, Radio, Sun, Zap } from 'lucide-react';
+import { Volume2, Square, Radio, Sun, Zap, UserCheck } from 'lucide-react';
 import { LocaleType } from '../types';
 import { translations } from '../utils/i18n';
 
@@ -9,6 +9,7 @@ interface MastheadProps {
   isSpeaking: boolean;
   onToggleSpeech: () => void;
   onTriggerScamHook: () => void;
+  onOpenProfile?: () => void;
 }
 
 export const Masthead: React.FC<MastheadProps> = ({
@@ -17,6 +18,7 @@ export const Masthead: React.FC<MastheadProps> = ({
   isSpeaking,
   onToggleSpeech,
   onTriggerScamHook,
+  onOpenProfile,
 }) => {
   const t = translations[locale];
 
@@ -63,6 +65,19 @@ export const Masthead: React.FC<MastheadProps> = ({
               <option value="ja-JP">🇯🇵 日本語 (Japanese)</option>
             </select>
           </div>
+
+          {/* Profile & Settings Button */}
+          {onOpenProfile && (
+            <button
+              id="masthead-profile-btn"
+              onClick={onOpenProfile}
+              title="View or update your personal name and emergency family contact"
+              className="btn-tactile px-2.5 py-1.5 bg-[#FAF7F0] hover:bg-[#EFEAE1] text-[#1A1A1A] rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm border border-[#2D2821]"
+            >
+              <UserCheck className="w-3.5 h-3.5 text-[#1E4D2B]" />
+              <span>{locale === 'hi-IN' ? 'मेरी प्रोफ़ाइल' : locale === 'ja-JP' ? '設定' : 'My Profile'}</span>
+            </button>
+          )}
 
           {/* JUDGE DEMO HOOK BUTTON */}
           <button

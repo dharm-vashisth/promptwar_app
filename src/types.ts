@@ -1,6 +1,21 @@
 export type LocaleType = 'en-US' | 'hi-IN' | 'ja-JP';
 
-export type CardMode = 'morning' | 'scanner' | 'result' | 'family';
+export type CardMode = 'morning' | 'scanner' | 'result' | 'family' | 'onboarding';
+
+export interface EmergencyContact {
+  fullName: string;
+  phoneNumber: string;
+  relationship?: string;
+}
+
+export interface UserProfile {
+  preferredName: string;
+  country: string;
+  preferredLanguage: LocaleType;
+  emergencyContact: EmergencyContact;
+  isOnboarded: boolean;
+  createdAt?: string;
+}
 
 export interface SafetyAnalysisResult {
   safetyStatus: 'DANGER' | 'SAFE' | 'CAUTION';

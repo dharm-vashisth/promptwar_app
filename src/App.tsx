@@ -5,7 +5,8 @@ import { MorningCard } from './components/MorningCard';
 import { ScannerCard } from './components/ScannerCard';
 import { ResultCard } from './components/ResultCard';
 import { FamilyCard } from './components/FamilyCard';
-import { LocaleType, CardMode, SafetyAnalysisResult } from './types';
+import { OnboardingScreen } from './components/OnboardingScreen';
+import { LocaleType, CardMode, SafetyAnalysisResult, UserProfile } from './types';
 import { translations } from './utils/i18n';
 import { speechEngine } from './utils/speech';
 import { analyzeSafety } from './services/safetyService';
@@ -13,7 +14,28 @@ import { presetSamples } from './data/samples';
 import { Zap } from 'lucide-react';
 
 export default function App() {
-  const [locale, setLocale] = useState<LocaleType>('en-US');
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    try {
+      const stored = localStorage.getItem('elderease_profile');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (_) {}
+    return {
+      preferredName: 'Arthur',
+      country: 'United States',
+      preferredLanguage: 'en-US',
+      emergencyContact: {
+        fullName: 'Emily (Daughter)',
+        phoneNumber: '555-0199',
+        relationship: 'Daughter',
+      },
+      isOnboarded: true,
+      createdAt: new Date().toISOString(),
+    };
+  });
+
+  const [locale, setLocale] = useState<LocaleType>(userProfile.preferredLanguage || 'en-US');
   const [currentMode, setCurrentMode] = useState<CardMode>('morning');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
@@ -189,6 +211,7 @@ export default function App() {
             isSpeaking={isSpeaking}
             onToggleSpeech={handleToggleSpeech}
             onTriggerScamHook={handleTriggerScamHook}
+            onOpenProfile={() => handleSwitchMode('onboarding')}
           />
 
           {/* Audio Visualizer Bar (Appears when reading aloud) */}
@@ -212,15 +235,15 @@ export default function App() {
 
         {/* SINGLE-FOCUS CONTAINER: Strictly EXACTLY ONE card visible at a time */}
         <div className="relative z-10 flex-1 px-4 py-5 flex flex-col justify-start">
-          {/* Calm Navigation Bar (3 Primary Senior Modes) */}
+          {/* Calm Navigation Bar (Primary Senior Modes) */}
           <nav
             aria-label="Navigation Tabs"
-            className="flex items-center justify-between bg-[#F4EFE6] p-1.5 rounded-xl border border-[#E4DCD0] mb-5"
+            className="flex items-center justify-between bg-[#F4EFE6] p-1.5 rounded-xl border border-[#E4DCD0] mb-5 gap-1"
           >
             <button
               id="tab-btn-morning"
               onClick={() => handleSwitchMode('morning')}
-              className={`flex-1 py-2.5 sm:py-3 rounded-lg font-bold text-sm sm:text-base text-center transition-all cursor-pointer ${
+              className={`flex-1 py-2 sm:py-2.5 rounded-lg font-bold text-xs sm:text-sm text-center transition-all cursor-pointer ${
                 currentMode === 'morning'
                   ? 'bg-[#1A1A1A] text-[#FDFBF7] shadow-tactile-dark'
                   : 'text-[#4A4A4A] hover:text-[#1A1A1A]'
@@ -232,7 +255,7 @@ export default function App() {
             <button
               id="tab-btn-scanner"
               onClick={() => handleSwitchMode('scanner')}
-              className={`flex-1 py-2.5 sm:py-3 rounded-lg font-bold text-sm sm:text-base text-center transition-all cursor-pointer ${
+              className={`flex-1 py-2 sm:py-2.5 rounded-lg font-bold text-xs sm:text-sm text-center transition-all cursor-pointer ${
                 currentMode === 'scanner' || currentMode === 'result'
                   ? 'bg-[#1A1A1A] text-[#FDFBF7] shadow-tactile-dark'
                   : 'text-[#4A4A4A] hover:text-[#1A1A1A]'
@@ -244,7 +267,7 @@ export default function App() {
             <button
               id="tab-btn-family"
               onClick={() => handleSwitchMode('family')}
-              className={`flex-1 py-2.5 sm:py-3 rounded-lg font-bold text-sm sm:text-base text-center transition-all cursor-pointer ${
+              className={`flex-1 py-2 sm:py-2.5 rounded-lg font-bold text-xs sm:text-sm text-center transition-all cursor-pointer ${
                 currentMode === 'family'
                   ? 'bg-[#1A1A1A] text-[#FDFBF7] shadow-tactile-dark'
                   : 'text-[#4A4A4A] hover:text-[#1A1A1A]'
@@ -252,9 +275,40 @@ export default function App() {
             >
               {t.tabs.family}
             </button>
+
+            <button
+              id="tab-btn-profile"
+              onClick={() => handleSwitchMode('onboarding')}
+              className={`flex-1 py-2 sm:py-2.5 rounded-lg font-bold text-xs sm:text-sm text-center transition-all cursor-pointer ${
+                currentMode === 'onboarding'
+                  ? 'bg-[#1A1A1A] text-[#FDFBF7] shadow-tactile-dark'
+                  : 'text-[#4A4A4A] hover:text-[#1A1A1A]'
+              }`}
+            >
+              {t.tabs.profile || '⚙️ Profile'}
+            </button>
           </nav>
 
           {/* ACTIVE SCREEN RENDERER: Exactly One Card */}
+          {currentMode === 'onboarding' && (
+            <OnboardingScreen
+              initialProfile={userProfile}
+              onComplete={(updatedProfile) => {
+                setUserProfile(updatedProfile);
+                setLocale(updatedProfile.preferredLanguage);
+                setCurrentMode('morning');
+                setToastMessage(
+                  updatedProfile.preferredLanguage === 'hi-IN'
+                    ? `नमस्ते ${updatedProfile.preferredName} जी! आपका विवरण सुरक्षित कर दिया गया है।`
+                    : updatedProfile.preferredLanguage === 'ja-JP'
+                    ? `${updatedProfile.preferredName} 様の設定を保存しました。`
+                    : `Welcome, ${updatedProfile.preferredName}! Your preferences are saved securely.`
+                );
+              }}
+              onCancel={() => setCurrentMode('morning')}
+            />
+          )}
+
           {currentMode === 'morning' && (
             <MorningCard
               locale={locale}
@@ -292,6 +346,7 @@ export default function App() {
             <FamilyCard
               locale={locale}
               onBackToMorning={() => handleSwitchMode('morning')}
+              customEmergencyContact={userProfile?.emergencyContact}
             />
           )}
         </div>

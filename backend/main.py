@@ -88,7 +88,7 @@ URGENCY_KEYWORDS = [
 ]
 
 def sanitize_pii_edge(text: str):
-    """Redacts private phone, email, card, and SSN formats before LLM submission."""
+    """Redacts private phone, email, card, SSN, and Aadhaar formats before LLM submission."""
     if not text:
         return "", False, []
 
@@ -153,7 +153,7 @@ async def analyze_document_or_message(payload: AnalyzeRequest):
     raw_text = payload.raw_text or ""
     sanitized_text, pii_masked, urgency_signals = sanitize_pii_edge(raw_text)
 
-    # If Gemini Client is configured, invoke Gemini API
+    # 1. Invoke Gemini API if client is configured
     if gemini_client:
         try:
             prompt = f"""
@@ -164,7 +164,7 @@ Locale: {payload.locale.value}
 
 Rules:
 1. Strict 3-part breakdown:
-   - safetyStatus: DANGER (if fake, phishing, or threatening) or SAFE (routine bill, legitimate notice)
+   - safetyStatus: DANGER (if fake, phishing, or threatening), CAUTION (unclear/suspicious), or SAFE (routine bill, legitimate notice).
    - fifteenWordSummary: Approximately 15 words or fewer, completely jargon-free.
    - recommendedAction: Exactly one single, clear step.
 2. Cultural adaptation:
@@ -178,15 +178,29 @@ Rules:
                 parts.append(types.Part.from_bytes(data=clean_b64.encode(), mime_type="image/jpeg"))
             parts.append(prompt)
 
+            # Enforce Structured Output via GenerateContentConfig
             response = gemini_client.models.generate_content(
                 model="gemini-3.8-flash",
                 contents=parts,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=SafetyAnalysisResponse,
+                    temperature=0.1
+                )
             )
-            # Parse response or fallback
+
+            if response.text:
+                parsed_response = SafetyAnalysisResponse.model_validate_json(response.text)
+                # Override edge-sanitization metadata flags in response
+                parsed_response.pii_masked = pii_masked
+                parsed_response.sanitized_text = sanitized_text
+                return parsed_response
+
         except Exception as e:
+            # On API failure or timeout, fall through seamlessly to deterministic rules
             pass
 
-    # Deterministic Rule Fallback
+    # 2. Deterministic Fallback Rules (Executed if Gemini is unconfigured or fails)
     is_danger = len(urgency_signals) > 0 or any(
         w in raw_text.lower() for w in ["urgent", "shutoff", "disconnect", "bit.ly", "police", "wire", "तुरंत", "काट"]
     )

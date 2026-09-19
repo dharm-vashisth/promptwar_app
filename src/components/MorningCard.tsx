@@ -8,6 +8,7 @@ interface MorningCardProps {
   onReadAloud: () => void;
   onGoToScanner: () => void;
   isSpeaking: boolean;
+  userName?: string;
 }
 
 export const MorningCard: React.FC<MorningCardProps> = ({
@@ -15,6 +16,7 @@ export const MorningCard: React.FC<MorningCardProps> = ({
   onReadAloud,
   onGoToScanner,
   isSpeaking,
+  userName,
 }) => {
   const t = translations[locale].morning;
 
@@ -31,6 +33,12 @@ export const MorningCard: React.FC<MorningCardProps> = ({
               <ShieldCheck className="w-4 h-4 text-[#1E4D2B]" /> {t.badgeSafe}
             </span>
           </div>
+
+          {userName && userName !== 'Arthur' && (
+            <div id="morning-user-badge" className="text-xs sm:text-sm font-bold text-[#1E4D2B] mb-2 flex items-center gap-1.5">
+              <span>{locale === 'hi-IN' ? `स्वागत है, ${userName} जी` : locale === 'ja-JP' ? `ようこそ、${userName} 様` : `Prepared for ${userName}`} • All Clear</span>
+            </div>
+          )}
 
           {/* Main Big Headline */}
           <h2 id="digest-headline" className="font-serif text-2xl sm:text-3xl font-bold text-[#1A1A1A] leading-snug mb-3.5">

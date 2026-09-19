@@ -7,6 +7,7 @@ interface OnboardingScreenProps {
   initialProfile?: UserProfile | null;
   onComplete: (profile: UserProfile) => void;
   onCancel?: () => void;
+  onLanguageChange?: (locale: LocaleType) => void;
 }
 
 const COUNTRIES = [
@@ -29,6 +30,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
   initialProfile,
   onComplete,
   onCancel,
+  onLanguageChange,
 }) => {
   const [preferredName, setPreferredName] = useState(initialProfile?.preferredName || '');
   const [country, setCountry] = useState(initialProfile?.country || 'United States');
@@ -36,31 +38,51 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
     initialProfile?.preferredLanguage || 'en-US'
   );
   const [emergencyName, setEmergencyName] = useState(
-    initialProfile?.emergencyContact.fullName || ''
+    initialProfile?.emergencyContact?.fullName || ''
   );
   const [emergencyPhone, setEmergencyPhone] = useState(
-    initialProfile?.emergencyContact.phoneNumber || ''
+    initialProfile?.emergencyContact?.phoneNumber || ''
   );
   const [emergencyRelationship, setEmergencyRelationship] = useState(
-    initialProfile?.emergencyContact.relationship || 'Daughter'
+    initialProfile?.emergencyContact?.relationship || 'Daughter'
   );
 
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSaved, setIsSaved] = useState(false);
 
-  // Sync language with country selection intelligently if first-time setup
+  // Sync state if initialProfile changes
+  useEffect(() => {
+    if (initialProfile) {
+      if (initialProfile.preferredName !== undefined) setPreferredName(initialProfile.preferredName);
+      if (initialProfile.country) setCountry(initialProfile.country);
+      if (initialProfile.preferredLanguage) setPreferredLanguage(initialProfile.preferredLanguage);
+      if (initialProfile.emergencyContact?.fullName) setEmergencyName(initialProfile.emergencyContact.fullName);
+      if (initialProfile.emergencyContact?.phoneNumber) setEmergencyPhone(initialProfile.emergencyContact.phoneNumber);
+      if (initialProfile.emergencyContact?.relationship) setEmergencyRelationship(initialProfile.emergencyContact.relationship);
+    }
+  }, [initialProfile]);
+
+  // Sync language with country selection intelligently
   const handleCountryChange = (selectedCountry: string) => {
     setCountry(selectedCountry);
-    if (!initialProfile) {
-      if (selectedCountry === 'India') {
-        setPreferredLanguage('hi-IN');
-      } else if (selectedCountry === 'Japan') {
-        setPreferredLanguage('ja-JP');
-      } else {
-        setPreferredLanguage('en-US');
-      }
+    let newLang: LocaleType | null = null;
+    if (selectedCountry === 'India') {
+      newLang = 'hi-IN';
+    } else if (selectedCountry === 'Japan') {
+      newLang = 'ja-JP';
+    } else if (['United States', 'United Kingdom', 'Canada', 'Australia'].includes(selectedCountry)) {
+      newLang = 'en-US';
     }
+    if (newLang) {
+      setPreferredLanguage(newLang);
+      onLanguageChange?.(newLang);
+    }
+  };
+
+  const handleLanguageSelect = (langCode: LocaleType) => {
+    setPreferredLanguage(langCode);
+    onLanguageChange?.(langCode);
   };
 
   // Stop voice speech when component unmounts
@@ -171,6 +193,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
     }
 
     setIsSaved(true);
+
+    // Sync active language across parent app immediately
+    onLanguageChange?.(preferredLanguage);
 
     // Call onComplete after brief visual confirmation
     setTimeout(() => {
@@ -434,7 +459,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                     type="button"
                     role="radio"
                     aria-checked={isSelected}
-                    onClick={() => setPreferredLanguage(loc.code)}
+                    onClick={() => handleLanguageSelect(loc.code)}
                     className={`min-h-[56px] p-4 rounded-xl border-2 font-bold text-left btn-tactile transition-all flex flex-col justify-between ${
                       isSelected
                         ? 'bg-[#1A1A1A] text-[#FAF7F0] border-[#1A1A1A] shadow-tactile-dark'

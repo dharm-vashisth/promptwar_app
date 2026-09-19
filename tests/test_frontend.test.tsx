@@ -94,6 +94,7 @@ vi.mock('../src/services/safetyService', () => ({
 describe('ElderEase Frontend Test Suite', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
   });
 
   // ===================================================================

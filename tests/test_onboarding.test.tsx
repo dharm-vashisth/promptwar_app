@@ -220,5 +220,16 @@ describe('ElderEase Onboarding & Configuration Test Suite', () => {
       expect(screen.getByLabelText(/परिवार के सदस्य का नाम/i)).toHaveValue('Amit (Son)');
       expect(screen.getByLabelText(/उनका फोन नंबर/i)).toHaveValue('+91 98765 43210');
     });
+
+    it('triggers onLanguageChange when a user selects a different language', () => {
+      const handleLanguageChange = vi.fn();
+      render(<OnboardingScreen onComplete={vi.fn()} onLanguageChange={handleLanguageChange} />);
+
+      // Click Hindi radio button
+      const hindiBtn = screen.getByRole('radio', { name: /हिन्दी/i });
+      fireEvent.click(hindiBtn);
+
+      expect(handleLanguageChange).toHaveBeenCalledWith('hi-IN');
+    });
   });
 });

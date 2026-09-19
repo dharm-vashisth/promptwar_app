@@ -10,6 +10,7 @@ interface MastheadProps {
   onToggleSpeech: () => void;
   onTriggerScamHook: () => void;
   onOpenProfile?: () => void;
+  userName?: string;
 }
 
 export const Masthead: React.FC<MastheadProps> = ({
@@ -19,8 +20,23 @@ export const Masthead: React.FC<MastheadProps> = ({
   onToggleSpeech,
   onTriggerScamHook,
   onOpenProfile,
+  userName,
 }) => {
   const t = translations[locale];
+
+  const getDynamicSalutation = () => {
+    const cleanName = userName?.trim();
+    if (cleanName && cleanName !== 'Arthur') {
+      if (locale === 'hi-IN') {
+        return `प्रणाम ${cleanName} जी।`;
+      }
+      if (locale === 'ja-JP') {
+        return `おはようございます、${cleanName} 様。`;
+      }
+      return `Good morning, ${cleanName}.`;
+    }
+    return t.salutation;
+  };
 
   return (
     <header className="relative px-5 pt-5 pb-3 border-b-2 border-[#1A1A1A] bg-[#FAF7F0]">
@@ -41,7 +57,7 @@ export const Masthead: React.FC<MastheadProps> = ({
             </h1>
           </div>
           <p id="salutation-text" className="text-base sm:text-lg text-[#1A1A1A] font-semibold mt-1 leading-snug">
-            {t.salutation}
+            {getDynamicSalutation()}
           </p>
           <p className="text-xs sm:text-sm text-[#4A4A4A] font-medium">
             {t.salutationSub}
@@ -75,7 +91,15 @@ export const Masthead: React.FC<MastheadProps> = ({
               className="btn-tactile px-2.5 py-1.5 bg-[#FAF7F0] hover:bg-[#EFEAE1] text-[#1A1A1A] rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm border border-[#2D2821]"
             >
               <UserCheck className="w-3.5 h-3.5 text-[#1E4D2B]" />
-              <span>{locale === 'hi-IN' ? 'मेरी प्रोफ़ाइल' : locale === 'ja-JP' ? '設定' : 'My Profile'}</span>
+              <span>
+                {userName && userName !== 'Arthur'
+                  ? userName
+                  : locale === 'hi-IN'
+                  ? 'मेरी प्रोफ़ाइल'
+                  : locale === 'ja-JP'
+                  ? '設定'
+                  : 'My Profile'}
+              </span>
             </button>
           )}
 

@@ -54,11 +54,21 @@ export default function App() {
     };
   }, []);
 
-  // Stop speech when switching locales
+  // Stop speech when switching locales and persist preference
   const handleLocaleChange = (newLocale: LocaleType) => {
     speechEngine.stopTTS();
     setIsSpeaking(false);
     setLocale(newLocale);
+    setUserProfile((prev) => {
+      const updated: UserProfile = {
+        ...prev,
+        preferredLanguage: newLocale,
+      };
+      try {
+        localStorage.setItem('elderease_profile', JSON.stringify(updated));
+      } catch (_) {}
+      return updated;
+    });
   };
 
   // Switch card mode
@@ -105,7 +115,15 @@ export default function App() {
   const handleReadMorningDigest = () => {
     speechEngine.stopTTS();
     const digest = t.morning;
-    const textToRead = `${digest.headline}. ${digest.summary}. ${digest.bankTitle}: ${digest.bankDetail}. ${digest.medTitle}: ${digest.medDetail}.`;
+    const nameGreeting =
+      userProfile.preferredName && userProfile.preferredName !== 'Arthur'
+        ? locale === 'hi-IN'
+          ? `${userProfile.preferredName} जी, `
+          : locale === 'ja-JP'
+          ? `${userProfile.preferredName} 様、`
+          : `${userProfile.preferredName}, `
+        : '';
+    const textToRead = `${nameGreeting}${digest.headline}. ${digest.summary}. ${digest.bankTitle}: ${digest.bankDetail}. ${digest.medTitle}: ${digest.medDetail}.`;
 
     speechEngine.speak(
       textToRead,
@@ -212,6 +230,7 @@ export default function App() {
             onToggleSpeech={handleToggleSpeech}
             onTriggerScamHook={handleTriggerScamHook}
             onOpenProfile={() => handleSwitchMode('onboarding')}
+            userName={userProfile.preferredName}
           />
 
           {/* Audio Visualizer Bar (Appears when reading aloud) */}
@@ -285,7 +304,9 @@ export default function App() {
                   : 'text-[#4A4A4A] hover:text-[#1A1A1A]'
               }`}
             >
-              {t.tabs.profile || '⚙️ Profile'}
+              {userProfile.preferredName && userProfile.preferredName !== 'Arthur'
+                ? `👤 ${userProfile.preferredName}`
+                : (t.tabs.profile || '⚙️ Profile')}
             </button>
           </nav>
 
@@ -293,9 +314,13 @@ export default function App() {
           {currentMode === 'onboarding' && (
             <OnboardingScreen
               initialProfile={userProfile}
+              onLanguageChange={handleLocaleChange}
               onComplete={(updatedProfile) => {
                 setUserProfile(updatedProfile);
                 setLocale(updatedProfile.preferredLanguage);
+                try {
+                  localStorage.setItem('elderease_profile', JSON.stringify(updatedProfile));
+                } catch (_) {}
                 setCurrentMode('morning');
                 setToastMessage(
                   updatedProfile.preferredLanguage === 'hi-IN'
@@ -315,6 +340,7 @@ export default function App() {
               onReadAloud={handleReadMorningDigest}
               onGoToScanner={() => handleSwitchMode('scanner')}
               isSpeaking={isSpeaking}
+              userName={userProfile.preferredName}
             />
           )}
 
